@@ -26,14 +26,34 @@
 
       <a-marker preset="hiro">
         
-        <!-- ▼▼▼ 変更点：rotationを「-90 0 0」に戻す！ ▼▼▼ -->
-        <!-- これが、3Dモデルを正しく「立たせる」ための基本の回転設定です -->
-        <a-gltf-model src="chair.glb" scale="1 1 1" position="0 0 0" rotation="-90 0 0"></a-gltf-model>
+        <a-gltf-model id="chair-model" src="chair.glb" scale="1 1 1" position="0 0 0" rotation="-90 0 0"></a-gltf-model>
         
       </a-marker>
       
       <a-entity camera></a-entity>
       
     </a-scene>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const model = document.querySelector('#chair-model');
+
+        // ▼▼▼ 変更点：イスの高さを790mm (0.79m) に設定 ▼▼▼
+        const realHeight = 0.79; 
+
+        model.addEventListener('model-loaded', () => {
+          const obj = model.getObject3D('mesh');
+          
+          const box = new THREE.Box3().setFromObject(obj);
+          const size = box.getSize(new THREE.Vector3());
+
+          const scale = realHeight / size.y;
+
+          model.setAttribute('scale', { x: scale, y: scale, z: scale });
+
+          console.log(`モデルの読み込み完了！実物の高さ${realHeight}mに調整しました。`);
+        });
+      });
+    </script>
   </body>
 </html>
