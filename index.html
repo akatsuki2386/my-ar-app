@@ -5,7 +5,7 @@
     <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <!-- ライブラリはAR.jsとA-Frameの2つだけ！シンプル！ -->
+    <!-- ライブラリはAR.jsとA-Frameの2つだけ！ -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
@@ -47,8 +47,8 @@
       cursor="rayOrigin: mouse; fuse: false;"
       raycaster="objects: .clickable">
 
-      <!-- マーカーのイス。タップすると、この場所に新しいイスがコピーされる -->
-      <a-marker preset="hiro">
+      <!-- ▼▼▼ 変更点1：マーカー本体にもIDを追加 ▼▼▼ -->
+      <a-marker id="hiro-marker" preset="hiro">
         <a-gltf-model 
           id="marker-chair"
           class="clickable"
@@ -61,58 +61,79 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- ▼▼▼ 変更点：イスを配置するロジックを、より確実な方法に修正！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点2：アンカー方式を使った新しいロジック！ ▼▼▼ -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const sceneEl = document.querySelector('#ar-scene');
         const markerChair = document.querySelector('#marker-chair');
+        const marker = document.querySelector('#hiro-marker'); // マーカー本体を取得
 
         // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
-          console.log('イスをその場に配置する処理を開始！');
+          // マーカーが現在認識されているか（見えているか）を確認
+          if (!marker.object3D.visible) {
+              console.log('マーカーが見えていないので配置できません。');
+              return;
+          }
 
-          // --- 新しいイスを、マーカーの場所にコピーして作る ---
+          console.log('イスをアンカーでその場に固定します！');
 
-          // 1. 新しいイスの要素を作る
+          // --- 新しいイスを、マーカーの場所に「アンカー」を使って固定する ---
+
+          // 1. アンカーとなる空のエンティティを作成
+          const anchor = document.createElement('a-entity');
+
+          // 2. マーカーの現在の世界座標系での「行列(Matrix)」を取得
+          // これが、その瞬間の位置・回転・スケールの情報のすべて
+          marker.object3D.updateWorldMatrix(true, false);
+          const markerMatrix = marker.object3D.matrixWorld;
+
+          // 3. アンカーに、取得した行列を適用する
+          // これでアンカーがマーカーと全く同じ場所に固定される
+          anchor.object3D.applyMatrix4(markerMatrix);
+          
+          // 4. アンカーをシーンに追加
+          sceneEl.appendChild(anchor);
+
+          // 5. 新しいイスを作成
           const newChair = document.createElement('a-gltf-model');
-          
-          // 2. マーカーの現在の「世界での位置」と「向き」をthree.jsオブジェクトから取得
-          const worldPosition = new THREE.Vector3();
-          const worldQuaternion = new THREE.Quaternion();
-          // .object3DはA-Frameエンティティのthree.jsオブジェクトを指す
-          // .getWorldPosition()で、そのオブジェクトのグローバルな位置を取得
-          markerChair.object3D.getWorldPosition(worldPosition);
-          markerChair.object3D.getWorldQuaternion(worldQuaternion);
-          
-          // デバッグ用にコンソールに位置情報を出力
-          console.log('取得したワールド座標:', worldPosition);
-
-          // 3. 新しいイスに、取得した位置と向き、その他の情報を設定
           newChair.setAttribute('src', 'chair.glb');
           
-          // A-Frameの作法に則って、オブジェクト形式で位置を設定するのが一番確実
-          newChair.setAttribute('position', {
-              x: worldPosition.x,
-              y: worldPosition.y,
-              z: worldPosition.z
-          });
-
-          // A-Frameが読み込み終わるのを待ってから、回転を直接設定する
-          newChair.addEventListener('model-loaded', () => {
-              // 回転も、直接クォータニオンをthree.jsオブジェクトに設定するのが確実
-              // これをしないと、新しいイスの向きがリセットされてしまう
-              newChair.object3D.quaternion.copy(worldQuaternion);
-          });
-          
+          // 6. イスのサイズを調整するコンポーネントを取り付け
           newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
-          newChair.classList.add('placed-chair'); // 後で操作するためにクラス名を追加
-
-          // 4. 作ったイスをシーンに直接追加する（これでマーカーから解放される！）
-          sceneEl.appendChild(newChair);
           
-          console.log('新しいイスをシーンに追加しました。');
+          // 7. 新しいイスを「アンカーの子」として追加
+          // これで、イスはアンカーを基準にした位置(0, 0, 0)に置かれる
+          anchor.appendChild(newChair);
+
+          console.log('新しいイスをアンカーに固定しました。');
         });
       });
     </script>
   </body>
 </html>
+```
+
+### どこを変えたか
+
+1.  **マーカー本体にIDを追加**
+    * イスだけじゃなくて、マーカー自体もJavaScriptから見つけられるように`id="hiro-marker"`を追加した。
+
+2.  **アンカー方式のロジックに全面変更！**
+    * **タップされたら:**
+    * マーカーの**現在の位置や向きの情報**を、`matrixWorld`っていう魔法の箱にまるごとコピーする。
+    * 空っぽの入れ物（`anchor`）をその場に作る。
+    * その入れ物に、さっきコピーした魔法の箱の中身を全部適用する。これで、**入れ物がその場にガッチリ固定される**。
+    * 新しいイスを作って、その**固定された入れ物の中に入れる**。
+
+### これでどうなるはずか？
+
+前と同じだ！
+
+1.  床に置いたマーカーを写すと、イスが表示される。
+2.  その**イスをタップ**する。
+3.  タップした**その場所に、新しいイスがドン！とコピーされて置かれる**。
+4.  その後は、**マーカーを動かしても、新しく置かれたイスはその場に残り続ける**。
+
+今度こそ、本当にその場に固定されるはずだ！
+この問題との戦いに、終止符を打とうぜ！試してみて
