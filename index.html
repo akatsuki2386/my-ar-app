@@ -20,31 +20,29 @@
       }
     </style>
 
-    <!-- ▼▼▼ 変更点1：JavaScriptを<head>に移動し、コンポーネントを定義 ▼▼▼ -->
     <script>
       // 'size-adjuster'という名前の新しい部品（コンポーネント）をA-Frameに登録する
       AFRAME.registerComponent('size-adjuster', {
-        // この部品が受け取るデータ（スキーマ）を定義
         schema: {
-          // targetHeightという名前で、数値データを受け取る。初期値は1。
           targetHeight: {type: 'number', default: 1}
         },
-        // この部品が初期化された時に一度だけ実行される関数
         init: function () {
-          // this.el は、この部品が取り付けられた要素（今回は<a-gltf-model>）を指す
           this.el.addEventListener('model-loaded', () => {
-            // データ（スキーマ）からtargetHeightの値を取得
             const targetHeight = this.data.targetHeight;
-            const obj = this.el.getObject3D('mesh');
             
-            if (!obj) return; // オブジェクトがなければ何もしない
+            // ▼▼▼ 変更点1：モデル全体のオブジェクトを取得するように変更 ▼▼▼
+            const obj = this.el.object3D; // 'mesh'だけでなく、モデル全体を取得して正確に測る
+            
+            if (!obj) return;
 
             const box = new THREE.Box3().setFromObject(obj);
             const size = box.getSize(new THREE.Vector3());
 
-            // size.yが0でなければスケールを計算
-            if (size.y !== 0) {
-              const scale = targetHeight / size.y;
+            // ▼▼▼ 変更点2：高さを表す軸を size.z に変更 ▼▼▼
+            // モデルがX軸で-90度回転されることを考慮すると、
+            // 元のモデルの「奥行き(Z軸)」が、回転後の「高さ(Y軸)」になるため。
+            if (size.z !== 0) {
+              const scale = targetHeight / size.z;
               this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
               console.log(`モデルのスケールを調整しました。目標の高さ: ${targetHeight}m`);
             }
@@ -59,12 +57,13 @@
 
       <a-marker preset="hiro">
         
-        <!-- ▼▼▼ 変更点2：新しく作った'size-adjuster'部品を取り付け、高さを3mに指定 ▼▼▼ -->
+        <!-- ▼▼▼ 変更点3：高さを一旦、正しい0.79mに戻す ▼▼▼ -->
+        <!-- またテストしたい場合は、ここの数字を3とかに変えてみてね！ -->
         <a-gltf-model 
           src="chair.glb" 
           position="0 0 0" 
           rotation="-90 0 0"
-          size-adjuster="targetHeight: 3;">
+          size-adjuster="targetHeight: 0.79;">
         </a-gltf-model>
         
       </a-marker>
