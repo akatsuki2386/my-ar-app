@@ -5,11 +5,9 @@
     <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <!-- A-FrameとAR.jsのライブラリを読み込む -->
+    <!-- ライブラリは変更なし -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    
-    <!-- ▼▼▼ 変更点1：床認識ライブラリのコメントアウトを解除！ ▼▼▼ -->
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
 
     <style>
@@ -45,7 +43,6 @@
   </head>
 
   <body>
-    <!-- ▼▼▼ 変更点2：ar-hit-testを復活させ、raycasterの初期設定をイスに向ける ▼▼▼ -->
     <a-scene 
       id="ar-scene"
       arjs="sourceType: webcam; debugUIEnabled: false;"
@@ -55,7 +52,6 @@
       raycaster="objects: .chair-marker">
 
       <a-marker preset="hiro">
-        <!-- class名を "chair-marker" に変更 -->
         <a-gltf-model 
           id="marker-chair"
           class="chair-marker"
@@ -65,68 +61,74 @@
         </a-gltf-model>
       </a-marker>
 
-      <!-- ▼▼▼ 変更点3：床カーソルのコメントアウトを解除！ ▼▼▼ -->
-      <!-- class名を "placement-cursor" に変更 -->
       <a-entity 
         id="placement-cursor" 
         class="placement-cursor"
         ar-hit-test="targetEl: #placement-cursor" 
         position="0 0 -2" 
         visible="false">
-        <a-ring
-            color="#007AFF"
-            radius-inner="0.10"
-            radius-outer="0.15"
-            rotation="-90 0 0">
-        </a-ring>
+        <a-ring color="#007AFF" radius-inner="0.10" radius-outer="0.15" rotation="-90 0 0"></a-ring>
       </a-entity>
 
-      <a-entity camera></a-entity>
+      <!-- ▼▼▼ 変更点1：カメラにステータス表示用のテキストを追加 ▼▼▼ -->
+      <a-camera>
+        <a-text 
+          id="status-text"
+          value="マーカーを探しています..."
+          position="-0.5 -0.8 -2"
+          color="white"
+          width="4">
+        </a-text>
+      </a-camera>
     </a-scene>
 
     <script>
-      // ▼▼▼ 変更点4：交通整理をするJavaScript！ ▼▼▼
+      // ▼▼▼ 変更点2：デバッグ用のログとステータス表示を追加 ▼▼▼
       document.addEventListener('DOMContentLoaded', () => {
         const sceneEl = document.querySelector('#ar-scene');
         const markerChair = document.querySelector('#marker-chair');
         const placementCursor = document.querySelector('#placement-cursor');
+        const statusText = document.querySelector('#status-text');
+
+        // --- デバッグ用のログ ---
+        sceneEl.addEventListener('ar-hit-test-start', () => {
+          console.log('床認識システム、起動開始');
+          statusText.setAttribute('value', '床を認識中...');
+        });
+        sceneEl.addEventListener('ar-hit-test-achieved', () => {
+          console.log('床を発見！');
+          statusText.setAttribute('value', '床を発見！リングをタップして配置');
+        });
+        sceneEl.addEventListener('ar-hit-test-select', () => {
+          console.log('床がタップされました');
+        });
 
         // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
           console.log('配置モードに切り替え！');
+          statusText.setAttribute('value', '床を探しています...');
           
-          // マーカーのイスを非表示に
           markerChair.setAttribute('visible', 'false');
-          
-          // 床認識を有効にし、カーソルを表示
           sceneEl.setAttribute('ar-hit-test', 'enabled', true);
           placementCursor.setAttribute('visible', 'true');
-          
-          // 【交通整理！】タップの対象を、床カーソル(.placement-cursor)だけに絞る！
           sceneEl.setAttribute('raycaster', 'objects', '.placement-cursor');
         });
 
         // 床カーソルがタップされた時の処理
         placementCursor.addEventListener('click', () => {
             console.log('床にイスを配置！');
+            statusText.setAttribute('value', 'マーカーを探しています...');
 
-            // --- 新しいイスを、カーソルの場所に作る ---
             const newChair = document.createElement('a-gltf-model');
             newChair.setAttribute('src', 'chair.glb');
-            
             const position = placementCursor.getAttribute('position');
             newChair.setAttribute('position', position);
-            
             newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
-            
             sceneEl.appendChild(newChair);
 
-            // --- モードを元に戻す ---
             sceneEl.setAttribute('ar-hit-test', 'enabled', false);
             placementCursor.setAttribute('visible', 'false');
             markerChair.setAttribute('visible', 'true');
-            
-            // 【交通整理！】タップの対象を、マーカーのイス(.chair-marker)だけに戻す！
             sceneEl.setAttribute('raycaster', 'objects', '.chair-marker');
         });
       });
@@ -137,17 +139,22 @@
 
 ### どこを変えたか
 
-1.  **床認識機能を全部復活！**
-    * コメントアウトしてたライブラリや床カーソルを元に戻した。
+1.  **ステータス表示テキストを追加**
+    * カメラにくっつく形で、常に画面に文字が表示されるようにした。これで、今プログラムが何をしてるのか一目瞭然になる。
 
-2.  **タップ対象を切り替える「交通整理」を追加！（これがキモ！）**
-    * `sceneEl.setAttribute('raycaster', 'objects', '.new-target')` っていう命令を追加した。
-    * **イスをタップしたら:** タップの対象を床カーソル(`.placement-cursor`)だけに切り替える。
-    * **床をタップしたら:** タップの対象をマーカーのイス(`.chair-marker`)だけに戻す。
+2.  **床認識システムの「声」を聞く処理を追加**
+    * `ar-hit-test-start`（床認識スタート）とか`ar-hit-test-achieved`（床発見！）みたいなイベントが起きたら、コンソールにログを出すようにした。
+    * 同時に、画面のステータス表示も更新するようにした。
 
-これで、プログラムが混乱することなく、その時々にやるべきことだけに集中できるようになった。
-今度こそ、Step 4の全機能が動くはずだ！
+### これでどうなるか確認してほしい！
 
-もう一度GitHubを更新して、試してみてくれ！
-マーカーのイスをタップしたら、床に青いリングが出るか？そして、そのリングをタップして新しいイスが置けるか？
-頼ん
+またGitHubを更新して、試してみてくれ！
+イスをタップした後、**画面下の文字**がどう変わるか、そして**床に青いリング**が出るかを教えてほしい。
+
+* **もし文字が「床を認識中...」のまま**
+    → 床認識の魔法がうまく発動してない。
+
+* **もし文字が「床を発見！」に変わる**
+    → 魔法は発動してる！でもカーソルの表示に問題がある。
+
+この結果で、いよいよ犯人が特定できるはずだ！頼ん
