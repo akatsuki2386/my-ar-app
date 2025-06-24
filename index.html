@@ -5,6 +5,7 @@
     <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
+    <!-- ライブラリはAR.jsとA-Frameの2つだけ！シンプル！ -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
@@ -15,7 +16,7 @@
     </style>
 
     <script>
-      // size-adjusterはマーカーのイスにだけ使うので、そのまま
+      // size-adjusterコンポーネントはそのまま使う
       AFRAME.registerComponent('size-adjuster', {
         schema: { targetHeight: {type: 'number', default: 1} },
         init: function () {
@@ -39,13 +40,15 @@
   </head>
 
   <body>
+    <!-- ▼▼▼ 変更点1：シーンから不要な設定を削除し、シンプルに ▼▼▼ -->
     <a-scene 
+      id="ar-scene"
       arjs="sourceType: webcam; debugUIEnabled: false;"
       renderer="logarithmicDepthBuffer: true;"
       cursor="rayOrigin: mouse; fuse: false;"
       raycaster="objects: .clickable">
 
-      <!-- マーカーのイスは変更なし -->
+      <!-- マーカーのイス。タップすると、この場所に新しいイスがコピーされる -->
       <a-marker preset="hiro">
         <a-gltf-model 
           id="marker-chair"
@@ -56,45 +59,70 @@
         </a-gltf-model>
       </a-marker>
       
-      <a-camera>
-        <!-- ▼▼▼ 変更点1：持ち運び用のイスを修正 ▼▼▼ -->
-        <a-gltf-model
-          id="camera-chair"
-          src="chair.glb"
-          visible="false" <!-- 最初は隠しておく -->
-          position="0 -0.5 -1.5" 
-          scale="0.3 0.3 0.3"> <!-- size-adjusterをやめて、手頃な固定サイズに -->
-        </a-gltf-model>
-      </a-camera>
-
+      <!-- ▼▼▼ 変更点2：カメラから持ち運び用のイスを削除！ ▼▼▼ -->
+      <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- ▼▼▼ 変更点2：JavaScriptのロジックを復活させる！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点3：君のアイデアを元にした、新しいJavaScript！ ▼▼▼ -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
+        const sceneEl = document.querySelector('#ar-scene');
         const markerChair = document.querySelector('#marker-chair');
-        const cameraChair = document.querySelector('#camera-chair');
 
         // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
-          console.log('イスをマーカーから解放！');
+          console.log('イスをその場に配置！');
 
-          // マーカーのイスを隠す
-          markerChair.setAttribute('visible', 'false');
-          // カメラの前のイスを表示する
-          cameraChair.setAttribute('visible', 'true');
+          // --- 新しいイスを、マーカーの場所にコピーして作る ---
+
+          // 1. 新しいイスの要素を作る
+          const newChair = document.createElement('a-gltf-model');
           
-          // 3秒後に元の状態に戻る（テスト用）
-          setTimeout(() => {
-            if (markerChair && cameraChair) { // オブジェクトが存在するか確認
-              markerChair.setAttribute('visible', 'true');
-              cameraChair.setAttribute('visible', 'false');
-              console.log('リセットしました');
-            }
-          }, 3000);
+          // 2. マーカーのイスの現在の「世界での位置」と「向き」を取得
+          const worldPosition = new THREE.Vector3();
+          const worldQuaternion = new THREE.Quaternion();
+          markerChair.object3D.getWorldPosition(worldPosition);
+          markerChair.object3D.getWorldQuaternion(worldQuaternion);
+          const worldRotation = new THREE.Euler().setFromQuaternion(worldQuaternion, 'YXZ');
+
+          // 3. 新しいイスに、取得した位置と向き、その他の情報を設定
+          newChair.setAttribute('src', 'chair.glb');
+          newChair.setAttribute('position', worldPosition);
+          newChair.setAttribute('rotation', {
+            x: THREE.MathUtils.radToDeg(worldRotation.x),
+            y: THREE.MathUtils.radToDeg(worldRotation.y),
+            z: THREE.MathUtils.radToDeg(worldRotation.z)
+          });
+          newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
+          
+          // 4. 作ったイスをシーンに直接追加する（これでマーカーから解放される！）
+          sceneEl.appendChild(newChair);
         });
       });
     </script>
   </body>
 </html>
+```
 
+### どこを変えたか
+
+1.  **持ち運び用のイスを削除**
+    * あの複雑になる原因だった、カメラにくっついてるイスはもういらないから、スッキリ削除した！
+
+2.  **新しいJavaScriptのロジック！**
+    * マーカーのイスをタップしたら…
+    * **`getWorldPosition()`**っていう魔法の呪文で、マーカーのイスが**今、世界のどこにあるか**を正確に測る。
+    * その場所に、**全く新しいイスをコピーして作る！**
+    * そして、その新しいイスを、マーカーの中じゃなくて、**シーン全体に直接追加**する。
+
+### これでどうなるはずか？
+
+1.  今まで通り、マーカーを写すとイスが表示される。
+2.  床にマーカーを置いて、その**イスをタップ**する。
+3.  すると、タップしたその場所に、**新しいイスがドン！とコピーされて置かれる**。
+4.  その後は、**マーカーを動かしても、新しく置かれたイスはその場に残り続ける**はずだ！
+
+これこそ、君がやりたかったことの第一歩だと思う。
+ここまで来れたのは、マジで君のアイデアのおかげだ！
+
+さあ、最後の仕上げだ！GitHubを更新して、試してみて
