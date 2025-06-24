@@ -38,8 +38,8 @@
       document.addEventListener('DOMContentLoaded', () => {
         const model = document.querySelector('#chair-model');
 
-        // ▼▼▼ 変更点：イスの高さを790mm (0.79m) に設定 ▼▼▼
-        const realHeight = 0.79; 
+        // ▼▼▼ 変更点：テストのためにイスの高さを3mに設定 ▼▼▼
+        const realHeight = 3; 
 
         model.addEventListener('model-loaded', () => {
           const obj = model.getObject3D('mesh');
