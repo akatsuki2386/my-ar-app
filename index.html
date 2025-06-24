@@ -9,9 +9,8 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
-    <!-- 床認識ライブラリは一旦コメントアウト（無効化）
+    <!-- ▼▼▼ 変更点1：床認識ライブラリのコメントアウトを解除！ ▼▼▼ -->
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
-    -->
 
     <style>
       body { margin: 0 !important; overflow: hidden !important; }
@@ -46,44 +45,89 @@
   </head>
 
   <body>
-    <!-- ▼▼▼ 変更点1：ar-hit-testを削除し、タップ機能の設定だけを残す ▼▼▼ -->
+    <!-- ▼▼▼ 変更点2：ar-hit-testを復活させ、raycasterの初期設定をイスに向ける ▼▼▼ -->
     <a-scene 
+      id="ar-scene"
       arjs="sourceType: webcam; debugUIEnabled: false;"
+      ar-hit-test="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
       cursor="rayOrigin: mouse; fuse: false;"
-      raycaster="objects: .clickable">
+      raycaster="objects: .chair-marker">
 
-      <!-- マーカーで表示するイス -->
       <a-marker preset="hiro">
+        <!-- class名を "chair-marker" に変更 -->
         <a-gltf-model 
           id="marker-chair"
-          class="clickable"
+          class="chair-marker"
           src="chair.glb" 
           position="0 0 0"
           size-adjuster="targetHeight: 0.79">
         </a-gltf-model>
       </a-marker>
 
-      <!-- ▼▼▼ 変更点2：床カーソルを一旦コメントアウト（無効化）▼▼▼ -->
-      <!-- 
+      <!-- ▼▼▼ 変更点3：床カーソルのコメントアウトを解除！ ▼▼▼ -->
+      <!-- class名を "placement-cursor" に変更 -->
       <a-entity 
         id="placement-cursor" 
-        class="clickable" ... >
+        class="placement-cursor"
+        ar-hit-test="targetEl: #placement-cursor" 
+        position="0 0 -2" 
+        visible="false">
+        <a-ring
+            color="#007AFF"
+            radius-inner="0.10"
+            radius-outer="0.15"
+            rotation="-90 0 0">
+        </a-ring>
       </a-entity>
-      -->
 
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // ▼▼▼ 変更点3：JavaScriptをタップのテストだけに絞る ▼▼▼
+      // ▼▼▼ 変更点4：交通整理をするJavaScript！ ▼▼▼
       document.addEventListener('DOMContentLoaded', () => {
+        const sceneEl = document.querySelector('#ar-scene');
         const markerChair = document.querySelector('#marker-chair');
+        const placementCursor = document.querySelector('#placement-cursor');
 
+        // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
-          // イスがタップされたら、コンソールにメッセージを出して、イスを隠す
-          console.log('★★★★★ イスのタップに成功！ ★★★★★');
+          console.log('配置モードに切り替え！');
+          
+          // マーカーのイスを非表示に
           markerChair.setAttribute('visible', 'false');
+          
+          // 床認識を有効にし、カーソルを表示
+          sceneEl.setAttribute('ar-hit-test', 'enabled', true);
+          placementCursor.setAttribute('visible', 'true');
+          
+          // 【交通整理！】タップの対象を、床カーソル(.placement-cursor)だけに絞る！
+          sceneEl.setAttribute('raycaster', 'objects', '.placement-cursor');
+        });
+
+        // 床カーソルがタップされた時の処理
+        placementCursor.addEventListener('click', () => {
+            console.log('床にイスを配置！');
+
+            // --- 新しいイスを、カーソルの場所に作る ---
+            const newChair = document.createElement('a-gltf-model');
+            newChair.setAttribute('src', 'chair.glb');
+            
+            const position = placementCursor.getAttribute('position');
+            newChair.setAttribute('position', position);
+            
+            newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
+            
+            sceneEl.appendChild(newChair);
+
+            // --- モードを元に戻す ---
+            sceneEl.setAttribute('ar-hit-test', 'enabled', false);
+            placementCursor.setAttribute('visible', 'false');
+            markerChair.setAttribute('visible', 'true');
+            
+            // 【交通整理！】タップの対象を、マーカーのイス(.chair-marker)だけに戻す！
+            sceneEl.setAttribute('raycaster', 'objects', '.chair-marker');
         });
       });
     </script>
@@ -93,20 +137,17 @@
 
 ### どこを変えたか
 
-1.  **床認識の機能を全部オフに！**
-    * 床認識ライブラリ（`aframe-extras`）や、床カーソル（`placement-cursor`）、シーンの`ar-hit-test`設定など、**タップ以外の新しい機能を一旦全部コメントアウト（無効化）**した。これで、問題の範囲をタップ機能だけに絞れる。
+1.  **床認識機能を全部復活！**
+    * コメントアウトしてたライブラリや床カーソルを元に戻した。
 
-2.  **JavaScriptを超シンプルに**
-    * 複雑なモード切替のロジックを全部やめて、「マーカーのイスがクリックされたら、メッセージを出して、イスを隠す」っていう、たった一つの機能にした。
+2.  **タップ対象を切り替える「交通整理」を追加！（これがキモ！）**
+    * `sceneEl.setAttribute('raycaster', 'objects', '.new-target')` っていう命令を追加した。
+    * **イスをタップしたら:** タップの対象を床カーソル(`.placement-cursor`)だけに切り替える。
+    * **床をタップしたら:** タップの対象をマーカーのイス(`.chair-marker`)だけに戻す。
 
-### これでどうなるはずか？
+これで、プログラムが混乱することなく、その時々にやるべきことだけに集中できるようになった。
+今度こそ、Step 4の全機能が動くはずだ！
 
-1.  今まで通り、Hiroマーカーを写すとイスが表示される。
-2.  その**イスをタップする**。
-3.  イスが**スッと消えれば**、タップ機能はちゃんと動いてるってことだ！
-    （PCのコンソールには「タップに成功！」ってメッセージも出てるはず）
-
-もしこれでイスが消えたら、犯人はタップ機能と床認識機能の「組み合わせ」だってことが分かる。
-もし消えなかったら、犯人は`raycaster`そのものだ。
-
-原因究明のための大事な一歩だ！またGitHubを更新して試してみて
+もう一度GitHubを更新して、試してみてくれ！
+マーカーのイスをタップしたら、床に青いリングが出るか？そして、そのリングをタップして新しいイスが置けるか？
+頼ん
