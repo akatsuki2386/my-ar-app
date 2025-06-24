@@ -22,23 +22,19 @@
   </head>
 
   <body>
-    <!-- ▼▼▼ 変更点：設定を最小限にしてデバッグしやすくした ▼▼▼ -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <!-- ▼▼▼ 変更点：debugUIEnabledをtrueにして、デバッグモードをONにする ▼▼▼ -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: true;">
 
       <!-- 
-        マーカーの設定。
-        今回は一番シンプルな組み込みマーカー(hiro)を使う。
-        JavaScriptのイベントは一旦やめて、マーカーを認識したら
-        この中身が表示されるかだけを確認する。
-      -->
+        本当にA-Frameが動いているか確認するため、
+        マーカーの外にテスト用の文字を置いてみる。
+        もし左上に黒い文字が見えたら、A-Frame自体は動いている証拠。
+       -->
+      <a-text value="A-Frame OK" color="black" position="-1 0.5 -2"></a-text>
+
       <a-marker preset="hiro">
         
-        <!-- 
-          箱をマーカーのど真ん中に(position="0 0 0")、
-          少し大きめ(scale="0.5 0.5 0.5")に表示してみる。
-          これで表示されれば、マーカー認識は成功していることになる。
-        -->
-        <a-box position='0 0 0' scale="0.5 0.5 0.5" material='color: red;'></a-box>
+        <a-box position='0 0.5 0' scale="0.5 0.5 0.5" material='color: red;'></a-box>
         
       </a-marker>
       
