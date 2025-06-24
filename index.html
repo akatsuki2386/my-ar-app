@@ -19,6 +19,39 @@
         width: 100vw;
       }
     </style>
+
+    <!-- ▼▼▼ 変更点1：JavaScriptを<head>に移動し、コンポーネントを定義 ▼▼▼ -->
+    <script>
+      // 'size-adjuster'という名前の新しい部品（コンポーネント）をA-Frameに登録する
+      AFRAME.registerComponent('size-adjuster', {
+        // この部品が受け取るデータ（スキーマ）を定義
+        schema: {
+          // targetHeightという名前で、数値データを受け取る。初期値は1。
+          targetHeight: {type: 'number', default: 1}
+        },
+        // この部品が初期化された時に一度だけ実行される関数
+        init: function () {
+          // this.el は、この部品が取り付けられた要素（今回は<a-gltf-model>）を指す
+          this.el.addEventListener('model-loaded', () => {
+            // データ（スキーマ）からtargetHeightの値を取得
+            const targetHeight = this.data.targetHeight;
+            const obj = this.el.getObject3D('mesh');
+            
+            if (!obj) return; // オブジェクトがなければ何もしない
+
+            const box = new THREE.Box3().setFromObject(obj);
+            const size = box.getSize(new THREE.Vector3());
+
+            // size.yが0でなければスケールを計算
+            if (size.y !== 0) {
+              const scale = targetHeight / size.y;
+              this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
+              console.log(`モデルのスケールを調整しました。目標の高さ: ${targetHeight}m`);
+            }
+          });
+        }
+      });
+    </script>
   </head>
 
   <body>
@@ -26,34 +59,18 @@
 
       <a-marker preset="hiro">
         
-        <a-gltf-model id="chair-model" src="chair.glb" scale="1 1 1" position="0 0 0" rotation="-90 0 0"></a-gltf-model>
+        <!-- ▼▼▼ 変更点2：新しく作った'size-adjuster'部品を取り付け、高さを3mに指定 ▼▼▼ -->
+        <a-gltf-model 
+          src="chair.glb" 
+          position="0 0 0" 
+          rotation="-90 0 0"
+          size-adjuster="targetHeight: 3;">
+        </a-gltf-model>
         
       </a-marker>
       
       <a-entity camera></a-entity>
       
     </a-scene>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const model = document.querySelector('#chair-model');
-
-        // ▼▼▼ 変更点：テストのためにイスの高さを3mに設定 ▼▼▼
-        const realHeight = 3; 
-
-        model.addEventListener('model-loaded', () => {
-          const obj = model.getObject3D('mesh');
-          
-          const box = new THREE.Box3().setFromObject(obj);
-          const size = box.getSize(new THREE.Vector3());
-
-          const scale = realHeight / size.y;
-
-          model.setAttribute('scale', { x: scale, y: scale, z: scale });
-
-          console.log(`モデルの読み込み完了！実物の高さ${realHeight}mに調整しました。`);
-        });
-      });
-    </script>
   </body>
 </html>
