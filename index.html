@@ -11,8 +11,11 @@
   </head>
 
   <body style="margin : 0px; overflow: hidden;">
-    <!-- ▼▼▼ 変更点：rendererにphysicallyCorrectLightsを追加 ▼▼▼ -->
-    <a-scene embedded renderer="logarithmicDepthBuffer: true; physicallyCorrectLights: true;" arjs="sourceType: webcam; vr-mode-ui: enabled: false; debugUIEnabled: false;">
+    <!-- ▼▼▼ 変更点：arjsの中にcameraParametersUrlを追加 ▼▼▼ -->
+    <a-scene 
+      embedded 
+      renderer="logarithmicDepthBuffer: true;" 
+      arjs="sourceType: webcam; cameraParametersUrl: https://raw.githack.com/AR-js-org/AR.js/master/data/camera_para.dat; vr-mode-ui: enabled: false; debugUIEnabled: false;">
 
       <a-marker id="my-marker" type="pattern" url="https://raw.githack.com/AR-js-org/AR.js/master/data/patt.hiro">
         
@@ -20,20 +23,11 @@
         
       </a-marker>
 
-      <a-entity camera></a-entity>
+      <!-- ▼▼▼ 変更点：カメラにプリセットを追加 ▼▼▼ -->
+      <a-camera preset="hiro"></a-camera>
     </a-scene>
 
     <script>
-      // ▼▼▼ 変更点：カメラのズーム問題を修正するための追加処理 ▼▼▼
-      window.addEventListener("arjs-video-loaded", () => {
-        // ARのビデオが読み込まれたら、強制的にリサイズイベントを発火させる
-        // これにより、カメラの投影行列が再計算され、ズームが直ることがある
-        setTimeout(() => {
-          window.dispatchEvent(new Event("resize"));
-          console.log("リサイズイベントを強制実行しました。");
-        }, 500); // 500ミリ秒の遅延を持たせる
-      });
-
       document.addEventListener('DOMContentLoaded', () => {
         const marker = document.querySelector("#my-marker");
 
