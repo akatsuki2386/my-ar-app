@@ -5,53 +5,47 @@
     <title>AR.jsマーカーテスト</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- A-FrameとAR.jsのライブラリを読み込む (ページの描画が始まる前に読み込む) -->
+    <!-- A-FrameとAR.jsのライブラリを読み込む -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   </head>
 
   <body style="margin : 0px; overflow: hidden;">
-    <!-- 
-      a-sceneがAR空間全体になる 
-      vr-mode-ui: スマホで見た時に出るVRゴーグルのアイコンを消す設定
-    -->
-    <!-- ▼▼▼ 変更点：ここにrenderer="logarithmicDepthBuffer: true;"を追加 ▼▼▼ -->
-    <a-scene embedded renderer="logarithmicDepthBuffer: true;" arjs="sourceType: webcam; vr-mode-ui: enabled: false; debugUIEnabled: false;">
+    <!-- ▼▼▼ 変更点：rendererにphysicallyCorrectLightsを追加 ▼▼▼ -->
+    <a-scene embedded renderer="logarithmicDepthBuffer: true; physicallyCorrectLights: true;" arjs="sourceType: webcam; vr-mode-ui: enabled: false; debugUIEnabled: false;">
 
-      <!-- 
-        マーカーの設定
-        type='pattern': カスタムマーカーを使う設定
-        url='.../marker.patt': ここに自分で作ったマーカーパターンファイルを指定する
-      -->
       <a-marker id="my-marker" type="pattern" url="https://raw.githack.com/AR-js-org/AR.js/master/data/patt.hiro">
         
-        <!-- マーカーを認識したら、この中身が表示される -->
         <a-box id="test-box" position="0 0.5 0" material="color: red;"></a-box>
         
       </a-marker>
 
-      <!-- カメラの設定 -->
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // HTMLの要素が全部読み込まれてからJavaScriptを実行するための記述
+      // ▼▼▼ 変更点：カメラのズーム問題を修正するための追加処理 ▼▼▼
+      window.addEventListener("arjs-video-loaded", () => {
+        // ARのビデオが読み込まれたら、強制的にリサイズイベントを発火させる
+        // これにより、カメラの投影行列が再計算され、ズームが直ることがある
+        setTimeout(() => {
+          window.dispatchEvent(new Event("resize"));
+          console.log("リサイズイベントを強制実行しました。");
+        }, 500); // 500ミリ秒の遅延を持たせる
+      });
+
       document.addEventListener('DOMContentLoaded', () => {
         const marker = document.querySelector("#my-marker");
 
-        // マーカーが見つかった時
         marker.addEventListener("markerFound", (e) => {
           console.log("マーカー見つけた！");
           const testBox = document.querySelector("#test-box");
-          // 見つけたら箱を緑色に変えてみる
           testBox.setAttribute('material', 'color', 'green');
         });
 
-        // マーカーが見えなくなった時
         marker.addEventListener("markerLost", (e) => {
           console.log("マーカー見失った...");
           const testBox = document.querySelector("#test-box");
-          // 見失ったら箱を赤色に戻す
           testBox.setAttribute('material', 'color', 'red');
         });
       });
