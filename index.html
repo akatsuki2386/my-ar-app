@@ -15,7 +15,8 @@
       a-sceneがAR空間全体になる 
       vr-mode-ui: スマホで見た時に出るVRゴーグルのアイコンを消す設定
     -->
-    <a-scene embedded arjs="sourceType: webcam; vr-mode-ui: enabled: false; debugUIEnabled: false;">
+    <!-- ▼▼▼ 変更点：ここにrenderer="logarithmicDepthBuffer: true;"を追加 ▼▼▼ -->
+    <a-scene embedded renderer="logarithmicDepthBuffer: true;" arjs="sourceType: webcam; vr-mode-ui: enabled: false; debugUIEnabled: false;">
 
       <!-- 
         マーカーの設定
