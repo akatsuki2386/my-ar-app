@@ -15,7 +15,7 @@
     </style>
 
     <script>
-      // size-adjusterはそのまま使う
+      // size-adjusterはマーカーのイスにだけ使うので、そのまま
       AFRAME.registerComponent('size-adjuster', {
         schema: { targetHeight: {type: 'number', default: 1} },
         init: function () {
@@ -45,7 +45,7 @@
       cursor="rayOrigin: mouse; fuse: false;"
       raycaster="objects: .clickable">
 
-      <!-- マーカーのイスはそのまま -->
+      <!-- マーカーのイスは変更なし -->
       <a-marker preset="hiro">
         <a-gltf-model 
           id="marker-chair"
@@ -56,38 +56,45 @@
         </a-gltf-model>
       </a-marker>
       
-      <!-- ▼▼▼ 変更点1：カメラのイスを最初から表示させてみる！ ▼▼▼ -->
       <a-camera>
+        <!-- ▼▼▼ 変更点1：持ち運び用のイスを修正 ▼▼▼ -->
         <a-gltf-model
           id="camera-chair"
           src="chair.glb"
-          visible="true" <!-- falseからtrueに変更 -->
+          visible="false" <!-- 最初は隠しておく -->
           position="0 -0.5 -1.5" 
-          size-adjuster="targetHeight: 0.79">
+          scale="0.3 0.3 0.3"> <!-- size-adjusterをやめて、手頃な固定サイズに -->
         </a-gltf-model>
       </a-camera>
 
     </a-scene>
 
-    <!-- ▼▼▼ 変更点2：JavaScriptのロジックを一旦コメントアウト（無効化）▼▼▼ -->
-    <!--
+    <!-- ▼▼▼ 変更点2：JavaScriptのロジックを復活させる！ ▼▼▼ -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const markerChair = document.querySelector('#marker-chair');
         const cameraChair = document.querySelector('#camera-chair');
 
+        // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
           console.log('イスをマーカーから解放！');
+
+          // マーカーのイスを隠す
           markerChair.setAttribute('visible', 'false');
+          // カメラの前のイスを表示する
           cameraChair.setAttribute('visible', 'true');
+          
+          // 3秒後に元の状態に戻る（テスト用）
           setTimeout(() => {
-            markerChair.setAttribute('visible', 'true');
-            cameraChair.setAttribute('visible', 'false');
-            console.log('リセットしました');
+            if (markerChair && cameraChair) { // オブジェクトが存在するか確認
+              markerChair.setAttribute('visible', 'true');
+              cameraChair.setAttribute('visible', 'false');
+              console.log('リセットしました');
+            }
           }, 3000);
         });
       });
     </script>
-    -->
   </body>
 </html>
+
