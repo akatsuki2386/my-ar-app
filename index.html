@@ -21,30 +21,40 @@
     </style>
 
     <script>
-      // 'size-adjuster'という名前の新しい部品（コンポーネント）をA-Frameに登録する
+      // 'size-adjuster'コンポーネントの最終修正版
       AFRAME.registerComponent('size-adjuster', {
         schema: {
           targetHeight: {type: 'number', default: 1}
         },
+        // ▼▼▼ 変更点1：initとtickを使って、より確実に処理を実行する ▼▼▼
         init: function () {
+          this.hasScaled = false; // まだスケール調整してない、という旗を立てる
+          this.modelEntity = null; // モデルを保持する変数を準備
+          
+          // モデルの読み込みが完了したら、モデルの情報を変数に保存するだけにする
           this.el.addEventListener('model-loaded', () => {
+            this.modelEntity = this.el.object3D;
+            console.log('モデルの3Dデータ準備完了');
+          });
+        },
+        // tickは毎フレーム実行される関数。ここでタイミングを見計らう
+        tick: function () {
+          // モデルの準備ができていて、まだスケール調整をしていない場合のみ、中の処理を一度だけ実行する
+          if (this.modelEntity && !this.hasScaled) {
             const targetHeight = this.data.targetHeight;
             
-            const obj = this.el.object3D;
-            
-            if (!obj) return;
-
-            const box = new THREE.Box3().setFromObject(obj);
+            // モデル全体の正確なサイズを計測
+            const box = new THREE.Box3().setFromObject(this.modelEntity);
             const size = box.getSize(new THREE.Vector3());
 
-            // モデルがX軸で-90度回転されることを考慮すると、
-            // 元のモデルの「奥行き(Z軸)」が、回転後の「高さ(Y軸)」になるため。
-            if (size.z !== 0) {
+            // モデルをX軸で-90度回転させているため、元の「奥行き(z)」が回転後の「高さ」になる
+            if (size.z > 0) {
               const scale = targetHeight / size.z;
               this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
-              console.log(`モデルのスケールを調整しました。目標の高さ: ${targetHeight}m`);
+              this.hasScaled = true; // 旗を「調整済み」にする（これで二度と実行されない）
+              console.log(`スケール調整実行！目標: ${targetHeight}m, 元の奥行き: ${size.z}, 計算スケール: ${scale}`);
             }
-          });
+          }
         }
       });
     </script>
@@ -55,7 +65,6 @@
 
       <a-marker preset="hiro">
         
-        <!-- ▼▼▼ 変更点：テストのために高さを3mに設定 ▼▼▼ -->
         <a-gltf-model 
           src="chair.glb" 
           position="0 0 0" 
