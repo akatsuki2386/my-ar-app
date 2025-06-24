@@ -36,7 +36,6 @@
             const box = new THREE.Box3().setFromObject(mesh);
             const size = box.getSize(new THREE.Vector3());
 
-            // ▼▼▼ 変更点1：計算に使う高さを size.y に変更！ ▼▼▼
             if (size.y > 0) {
               const scale = targetHeight / size.y;
               this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
@@ -61,11 +60,11 @@
 
       <a-marker preset="hiro">
         
-        <!-- ▼▼▼ 変更点2：rotationを一旦削除！ ▼▼▼ -->
+        <!-- ▼▼▼ 変更点：テストのために高さを0.1m(10cm)に設定 ▼▼▼ -->
         <a-gltf-model 
           src="chair.glb" 
           position="0 0 0"
-          size-adjuster="targetHeight: 3;">
+          size-adjuster="targetHeight: 0.1;">
         </a-gltf-model>
         
       </a-marker>
@@ -75,4 +74,3 @@
     </a-scene>
   </body>
 </html>
-
