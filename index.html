@@ -22,19 +22,18 @@
   </head>
 
   <body>
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: true;">
+    <!-- debugUIEnabledは、問題が起きたらまたtrueに戻せばOK -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
 
-      <a-text value="A-Frame OK" color="black" position="-1 0.5 -2"></a-text>
+      <!-- ▼▼▼ 変更点：「A-Frame OK」のテキストを削除 ▼▼▼ -->
 
       <a-marker preset="hiro">
         
-        <!-- ▼▼▼ 変更点：srcに正しいモデルのファイル名を指定 ▼▼▼ -->
+        <!-- ▼▼▼ 変更点：rotation="-90 0 0" を追加して、イスの向きを修正 ▼▼▼ -->
         <!-- 
-          src="chair.glb": GitHubにアップロードしたモデルファイルを指定
-          scale="1 1 1": 大きさは後で調整する
-          position="0 0 0": マーカーの真ん中に表示
+          rotation="X軸 Y軸 Z軸": X軸周りに-90度回転させる
          -->
-        <a-gltf-model src="chair.glb" scale="1 1 1" position="0 0 0"></a-gltf-model>
+        <a-gltf-model src="chair.glb" scale="1 1 1" position="0 0 0" rotation="-90 0 0"></a-gltf-model>
         
       </a-marker>
       
