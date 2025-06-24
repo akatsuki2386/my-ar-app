@@ -2,15 +2,13 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>AR.jsマーカーテスト</title>
-    <!-- ▼▼▼ 変更点：viewportをより厳密に設定 ▼▼▼ -->
+    <title>AR.jsマーカーテスト【デバッグ版】</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <!-- A-FrameとAR.jsのライブラリを読み込む -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
-    <!-- ▼▼▼ 変更点：CSSを追加して画面サイズを強制 ▼▼▼ -->
     <style>
       body {
         margin: 0 !important;
@@ -24,36 +22,26 @@
   </head>
 
   <body>
-    <a-scene 
-      embedded 
-      renderer="logarithmicDepthBuffer: true;" 
-      arjs="sourceType: webcam; cameraParametersUrl: https://raw.githack.com/AR-js-org/AR.js/master/data/camera_para.dat; vr-mode-ui: enabled: false; debugUIEnabled: false;">
+    <!-- ▼▼▼ 変更点：設定を最小限にしてデバッグしやすくした ▼▼▼ -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
 
-      <a-marker id="my-marker" type="pattern" url="https://raw.githack.com/AR-js-org/AR.js/master/data/patt.hiro">
+      <!-- 
+        マーカーの設定。
+        今回は一番シンプルな組み込みマーカー(hiro)を使う。
+        JavaScriptのイベントは一旦やめて、マーカーを認識したら
+        この中身が表示されるかだけを確認する。
+      -->
+      <a-marker preset="hiro">
         
-        <a-box id="test-box" position="0 0.5 0" material="color: red;"></a-box>
+        <!-- 
+          箱をマーカーのど真ん中に(position="0 0 0")、
+          少し大きめ(scale="0.5 0.5 0.5")に表示してみる。
+          これで表示されれば、マーカー認識は成功していることになる。
+        -->
+        <a-box position='0 0 0' scale="0.5 0.5 0.5" material='color: red;'></a-box>
         
       </a-marker>
-
-      <a-camera preset="hiro"></a-camera>
+      
     </a-scene>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const marker = document.querySelector("#my-marker");
-
-        marker.addEventListener("markerFound", (e) => {
-          console.log("マーカー見つけた！");
-          const testBox = document.querySelector("#test-box");
-          testBox.setAttribute('material', 'color', 'green');
-        });
-
-        marker.addEventListener("markerLost", (e) => {
-          console.log("マーカー見失った...");
-          const testBox = document.querySelector("#test-box");
-          testBox.setAttribute('material', 'color', 'red');
-        });
-      });
-    </script>
   </body>
 </html>
