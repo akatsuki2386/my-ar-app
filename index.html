@@ -30,15 +30,13 @@
           this.el.addEventListener('model-loaded', () => {
             const targetHeight = this.data.targetHeight;
             
-            // ▼▼▼ 変更点1：モデル全体のオブジェクトを取得するように変更 ▼▼▼
-            const obj = this.el.object3D; // 'mesh'だけでなく、モデル全体を取得して正確に測る
+            const obj = this.el.object3D;
             
             if (!obj) return;
 
             const box = new THREE.Box3().setFromObject(obj);
             const size = box.getSize(new THREE.Vector3());
 
-            // ▼▼▼ 変更点2：高さを表す軸を size.z に変更 ▼▼▼
             // モデルがX軸で-90度回転されることを考慮すると、
             // 元のモデルの「奥行き(Z軸)」が、回転後の「高さ(Y軸)」になるため。
             if (size.z !== 0) {
@@ -57,13 +55,12 @@
 
       <a-marker preset="hiro">
         
-        <!-- ▼▼▼ 変更点3：高さを一旦、正しい0.79mに戻す ▼▼▼ -->
-        <!-- またテストしたい場合は、ここの数字を3とかに変えてみてね！ -->
+        <!-- ▼▼▼ 変更点：テストのために高さを3mに設定 ▼▼▼ -->
         <a-gltf-model 
           src="chair.glb" 
           position="0 0 0" 
           rotation="-90 0 0"
-          size-adjuster="targetHeight: 0.79;">
+          size-adjuster="targetHeight: 3;">
         </a-gltf-model>
         
       </a-marker>
