@@ -5,7 +5,7 @@
     <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <!-- ライブラリは変更なし -->
+    <!-- ライブラリは3つとも必要 -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
@@ -13,148 +13,68 @@
     <style>
       body { margin: 0 !important; overflow: hidden !important; }
       a-scene { height: 100vh; width: 100vw; }
-      .clickable { cursor: pointer; }
     </style>
 
+    <!-- size-adjusterは今回使わないので、一旦コメントアウト
     <script>
-      // size-adjusterコンポーネントはそのまま
-      AFRAME.registerComponent('size-adjuster', {
-        schema: {
-          targetHeight: {type: 'number', default: 1}
-        },
-        init: function () {
-          this.scaled = false;
-        },
-        tick: function () {
-          if (this.el.object3DMap.mesh && !this.scaled) {
-            const targetHeight = this.data.targetHeight;
-            const mesh = this.el.getObject3D('mesh');
-            const box = new THREE.Box3().setFromObject(mesh);
-            const size = box.getSize(new THREE.Vector3());
-            if (size.y > 0) {
-              const scale = targetHeight / size.y;
-              this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
-              this.scaled = true;
-            }
-          }
-        }
-      });
+      AFRAME.registerComponent('size-adjuster', { ... });
     </script>
+    -->
   </head>
 
   <body>
+    <!-- ▼▼▼ 変更点1：arjsコンポーネントを削除し、ar-hit-testを最初から有効に！ ▼▼▼ -->
     <a-scene 
       id="ar-scene"
-      arjs="sourceType: webcam; debugUIEnabled: false;"
-      ar-hit-test="enabled: false"
-      renderer="logarithmicDepthBuffer: true;"
-      cursor="rayOrigin: mouse; fuse: false;"
-      raycaster="objects: .chair-marker">
+      ar-hit-test="enabled: true"
+      renderer="logarithmicDepthBuffer: true;">
 
+      <!-- ▼▼▼ 変更点2：マーカーを一旦コメントアウト（無効化） ▼▼▼ -->
+      <!-- 
       <a-marker preset="hiro">
-        <a-gltf-model 
-          id="marker-chair"
-          class="chair-marker"
-          src="chair.glb" 
-          position="0 0 0"
-          size-adjuster="targetHeight: 0.79">
-        </a-gltf-model>
+        ...
       </a-marker>
+      -->
 
+      <!-- ▼▼▼ 変更点3：床カーソルを最初から表示させる！ ▼▼▼ -->
       <a-entity 
         id="placement-cursor" 
-        class="placement-cursor"
         ar-hit-test="targetEl: #placement-cursor" 
         position="0 0 -2" 
-        visible="false">
+        visible="true">
         <a-ring color="#007AFF" radius-inner="0.10" radius-outer="0.15" rotation="-90 0 0"></a-ring>
       </a-entity>
 
-      <!-- ▼▼▼ 変更点1：カメラにステータス表示用のテキストを追加 ▼▼▼ -->
-      <a-camera>
-        <a-text 
-          id="status-text"
-          value="マーカーを探しています..."
-          position="-0.5 -0.8 -2"
-          color="white"
-          width="4">
-        </a-text>
-      </a-camera>
+      <a-camera></a-camera>
     </a-scene>
 
+    <!-- ▼▼▼ 変更点4：JavaScriptを一旦すべて削除！ ▼▼▼ -->
+    <!--
     <script>
-      // ▼▼▼ 変更点2：デバッグ用のログとステータス表示を追加 ▼▼▼
-      document.addEventListener('DOMContentLoaded', () => {
-        const sceneEl = document.querySelector('#ar-scene');
-        const markerChair = document.querySelector('#marker-chair');
-        const placementCursor = document.querySelector('#placement-cursor');
-        const statusText = document.querySelector('#status-text');
-
-        // --- デバッグ用のログ ---
-        sceneEl.addEventListener('ar-hit-test-start', () => {
-          console.log('床認識システム、起動開始');
-          statusText.setAttribute('value', '床を認識中...');
-        });
-        sceneEl.addEventListener('ar-hit-test-achieved', () => {
-          console.log('床を発見！');
-          statusText.setAttribute('value', '床を発見！リングをタップして配置');
-        });
-        sceneEl.addEventListener('ar-hit-test-select', () => {
-          console.log('床がタップされました');
-        });
-
-        // マーカーのイスがタップされた時の処理
-        markerChair.addEventListener('click', () => {
-          console.log('配置モードに切り替え！');
-          statusText.setAttribute('value', '床を探しています...');
-          
-          markerChair.setAttribute('visible', 'false');
-          sceneEl.setAttribute('ar-hit-test', 'enabled', true);
-          placementCursor.setAttribute('visible', 'true');
-          sceneEl.setAttribute('raycaster', 'objects', '.placement-cursor');
-        });
-
-        // 床カーソルがタップされた時の処理
-        placementCursor.addEventListener('click', () => {
-            console.log('床にイスを配置！');
-            statusText.setAttribute('value', 'マーカーを探しています...');
-
-            const newChair = document.createElement('a-gltf-model');
-            newChair.setAttribute('src', 'chair.glb');
-            const position = placementCursor.getAttribute('position');
-            newChair.setAttribute('position', position);
-            newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
-            sceneEl.appendChild(newChair);
-
-            sceneEl.setAttribute('ar-hit-test', 'enabled', false);
-            placementCursor.setAttribute('visible', 'false');
-            markerChair.setAttribute('visible', 'true');
-            sceneEl.setAttribute('raycaster', 'objects', '.chair-marker');
-        });
-      });
+      document.addEventListener('DOMContentLoaded', () => { ... });
     </script>
+    -->
   </body>
 </html>
 ```
 
 ### どこを変えたか
 
-1.  **ステータス表示テキストを追加**
-    * カメラにくっつく形で、常に画面に文字が表示されるようにした。これで、今プログラムが何をしてるのか一目瞭然になる。
+1.  **マーカー機能を全停止！**
+    * `<a-scene>`から`arjs`っていう設定を削除。
+    * `<a-marker>`と、マーカーの上のイスをまるごとコメントアウトした。
 
-2.  **床認識システムの「声」を聞く処理を追加**
-    * `ar-hit-test-start`（床認識スタート）とか`ar-hit-test-achieved`（床発見！）みたいなイベントが起きたら、コンソールにログを出すようにした。
-    * 同時に、画面のステータス表示も更新するようにした。
+2.  **床認識機能を最初からONに！**
+    * `<a-scene>`の`ar-hit-test`を`enabled: true`にして、ページを開いた瞬間から床を探し始めるようにした。
+    * 床カーソルも`visible="true"`にして、最初から見えるようにした。
+
+3.  **JavaScriptを全停止！**
+    * タップの処理とか、複雑になる原因のJavaScriptを一旦全部削除した。
 
 ### これでどうなるか確認してほしい！
 
-またGitHubを更新して、試してみてくれ！
-イスをタップした後、**画面下の文字**がどう変わるか、そして**床に青いリング**が出るかを教えてほしい。
+このコードでGitHubを更新して、ページを開いてみてくれ！
 
-* **もし文字が「床を認識中...」のまま**
-    → 床認識の魔法がうまく発動してない。
+**もし、カメラ映像の上に青いリングが表示されて、床の上をスルスルついてきたら**、床認識はちゃんと動いてるってことになる。そうなれば、あとはマーカーとの組み合わせ方を工夫すればいいだけだ！
 
-* **もし文字が「床を発見！」に変わる**
-    → 魔法は発動してる！でもカーソルの表示に問題がある。
-
-この結果で、いよいよ犯人が特定できるはずだ！頼ん
+原因究明のための超大事な一歩だ。これで犯人が見えるはず！頼
