@@ -21,17 +21,14 @@
     </style>
 
     <script>
-      // 'size-adjuster'コンポーネントの最終確定版
       AFRAME.registerComponent('size-adjuster', {
         schema: {
           targetHeight: {type: 'number', default: 1}
         },
         init: function () {
-          this.scaled = false; // まだスケール調整していない、という旗
+          this.scaled = false;
         },
-        // tickは毎フレーム実行される関数
         tick: function () {
-          // モデルのメッシュ(網目データ)が読み込まれていて、まだスケール調整をしていない場合のみ実行
           if (this.el.object3DMap.mesh && !this.scaled) {
             const targetHeight = this.data.targetHeight;
             const mesh = this.el.getObject3D('mesh');
@@ -39,18 +36,18 @@
             const box = new THREE.Box3().setFromObject(mesh);
             const size = box.getSize(new THREE.Vector3());
 
-            if (size.z > 0) {
-              const scale = targetHeight / size.z;
+            // ▼▼▼ 変更点1：計算に使う高さを size.y に変更！ ▼▼▼
+            if (size.y > 0) {
+              const scale = targetHeight / size.y;
               this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
               
-              // ▼▼▼ 変更点：成功したらモデルを黄色に光らせる！ ▼▼▼
               mesh.traverse((node) => {
                 if (node.isMesh) {
                   node.material.color.set('yellow');
                 }
               });
 
-              this.scaled = true; // 旗を「調整済み」にする
+              this.scaled = true;
               console.log('★★★★★ スケール調整＆カラー変更 成功！ ★★★★★');
             }
           }
@@ -64,10 +61,10 @@
 
       <a-marker preset="hiro">
         
+        <!-- ▼▼▼ 変更点2：rotationを一旦削除！ ▼▼▼ -->
         <a-gltf-model 
           src="chair.glb" 
-          position="0 0 0" 
-          rotation="-90 0 0"
+          position="0 0 0"
           size-adjuster="targetHeight: 3;">
         </a-gltf-model>
         
@@ -78,3 +75,4 @@
     </a-scene>
   </body>
 </html>
+
