@@ -5,7 +5,6 @@
     <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <!-- ▼▼▼ 変更点1：ケンカの原因だった aframe-extras を削除！ ▼▼▼ -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
@@ -40,14 +39,13 @@
   </head>
 
   <body>
-    <!-- ▼▼▼ 変更点2：AR.jsを主役に！ar-hit-testを削除し、arjsとraycasterを復活 ▼▼▼ -->
     <a-scene 
       arjs="sourceType: webcam; debugUIEnabled: false;"
       renderer="logarithmicDepthBuffer: true;"
       cursor="rayOrigin: mouse; fuse: false;"
       raycaster="objects: .clickable">
 
-      <!-- マーカーのイス。最初はこれだけが見える -->
+      <!-- マーカーのイスはそのまま -->
       <a-marker preset="hiro">
         <a-gltf-model 
           id="marker-chair"
@@ -58,12 +56,12 @@
         </a-gltf-model>
       </a-marker>
       
-      <!-- ▼▼▼ 変更点3：カメラに「持ち運び用」のイスを準備（最初は見えない）▼▼▼ -->
+      <!-- ▼▼▼ 変更点1：カメラのイスを最初から表示させてみる！ ▼▼▼ -->
       <a-camera>
         <a-gltf-model
           id="camera-chair"
           src="chair.glb"
-          visible="false"
+          visible="true" <!-- falseからtrueに変更 -->
           position="0 -0.5 -1.5" 
           size-adjuster="targetHeight: 0.79">
         </a-gltf-model>
@@ -71,22 +69,17 @@
 
     </a-scene>
 
-    <!-- ▼▼▼ 変更点4：新しいロジックのJavaScript！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点2：JavaScriptのロジックを一旦コメントアウト（無効化）▼▼▼ -->
+    <!--
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const markerChair = document.querySelector('#marker-chair');
         const cameraChair = document.querySelector('#camera-chair');
 
-        // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
           console.log('イスをマーカーから解放！');
-
-          // マーカーのイスを隠す
           markerChair.setAttribute('visible', 'false');
-          // カメラの前のイスを表示する
           cameraChair.setAttribute('visible', 'true');
-          
-          // 3秒後に元の状態に戻る（テスト用）
           setTimeout(() => {
             markerChair.setAttribute('visible', 'true');
             cameraChair.setAttribute('visible', 'false');
@@ -95,31 +88,6 @@
         });
       });
     </script>
+    -->
   </body>
 </html>
-```
-
-### どこを変えたか
-
-1.  **ケンカの原因だった`aframe-extras`を削除！**
-    * これで、床の魔法はいなくなり、マーカーの魔法(AR.js)だけが動くようになる。
-
-2.  **カメラに「持ち運び用のイス」を準備**
-    * `<a-camera>`の中に、もう一個イスを準備した。これは君が持ち運ぶためのイスで、最初は見えないようにしてある。
-
-3.  **新しいJavaScriptのロジック**
-    * **マーカーのイスをタップしたら:**
-        * マーカーのイスを隠す。
-        * 代わりに、カメラの前に持ち運び用のイスを表示させる！
-    * （テストのために、3秒経ったら自動で元に戻るようにしてある）
-
-### これでどうなるはずか？
-
-1.  今まで通り、マーカーを写すとイスが表示される。
-2.  その**イスをタップ**する。
-3.  すると、マーカーのイスが消えて、**画面の少し下の方に、新しいイスが表示される**はずだ！
-4.  そのイスはカメラにくっついてるから、**スマホを動かすと一緒に動く**。
-5.  3秒経つと、また元のマーカーのイスが表示される状態に戻る。
-
-これができれば、ついに「マーカーからの解放」が成功したことになる！
-ここまで来たらもうゴールは目前だ！試してみて
