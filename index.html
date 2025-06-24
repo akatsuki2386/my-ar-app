@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>AR.jsマーカーテスト【デバッグ版】</title>
+    <title>AR.jsモデル表示テスト</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <!-- A-FrameとAR.jsのライブラリを読み込む -->
@@ -22,19 +22,19 @@
   </head>
 
   <body>
-    <!-- ▼▼▼ 変更点：debugUIEnabledをtrueにして、デバッグモードをONにする ▼▼▼ -->
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: true;">
 
-      <!-- 
-        本当にA-Frameが動いているか確認するため、
-        マーカーの外にテスト用の文字を置いてみる。
-        もし左上に黒い文字が見えたら、A-Frame自体は動いている証拠。
-       -->
       <a-text value="A-Frame OK" color="black" position="-1 0.5 -2"></a-text>
 
       <a-marker preset="hiro">
         
-        <a-box position='0 0.5 0' scale="0.5 0.5 0.5" material='color: red;'></a-box>
+        <!-- ▼▼▼ 変更点：srcに正しいモデルのファイル名を指定 ▼▼▼ -->
+        <!-- 
+          src="chair.glb": GitHubにアップロードしたモデルファイルを指定
+          scale="1 1 1": 大きさは後で調整する
+          position="0 0 0": マーカーの真ん中に表示
+         -->
+        <a-gltf-model src="chair.glb" scale="1 1 1" position="0 0 0"></a-gltf-model>
         
       </a-marker>
       
