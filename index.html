@@ -2,25 +2,25 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>AR.jsモデル表示テスト</title>
+    <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <!-- A-FrameとAR.jsのライブラリを読み込む -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
+    <!-- ▼▼▼ 変更点1：床認識(Hit-Test)のための新しいライブラリを追加 ▼▼▼ -->
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
+
     <style>
-      body {
-        margin: 0 !important;
-        overflow: hidden !important;
-      }
-      a-scene {
-        height: 100vh;
-        width: 100vw;
-      }
+      body { margin: 0 !important; overflow: hidden !important; }
+      a-scene { height: 100vh; width: 100vw; }
+      /* タップできるオブジェクトには、カーソルを指マークにする */
+      .clickable { cursor: pointer; }
     </style>
 
     <script>
+      // size-adjusterコンポーネントはそのまま使う
       AFRAME.registerComponent('size-adjuster', {
         schema: {
           targetHeight: {type: 'number', default: 1}
@@ -32,22 +32,12 @@
           if (this.el.object3DMap.mesh && !this.scaled) {
             const targetHeight = this.data.targetHeight;
             const mesh = this.el.getObject3D('mesh');
-            
             const box = new THREE.Box3().setFromObject(mesh);
             const size = box.getSize(new THREE.Vector3());
-
             if (size.y > 0) {
               const scale = targetHeight / size.y;
               this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
-              
-              mesh.traverse((node) => {
-                if (node.isMesh) {
-                  node.material.color.set('yellow');
-                }
-              });
-
               this.scaled = true;
-              console.log('★★★★★ スケール調整＆カラー変更 成功！ ★★★★★');
             }
           }
         }
@@ -56,21 +46,128 @@
   </head>
 
   <body>
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <!-- ▼▼▼ 変更点2：ar-hit-testを追加し、WebXRモードに設定 ▼▼▼ -->
+    <a-scene 
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      ar-hit-test="enabled: false"
+      renderer="logarithmicDepthBuffer: true;">
 
-      <a-marker preset="hiro">
-        
-        <!-- ▼▼▼ 変更点：テストのために高さを0.1m(10cm)に設定 ▼▼▼ -->
+      <!-- マーカーで表示するイス（最初はこれだけが見える） -->
+      <a-marker id="hiro-marker" preset="hiro">
         <a-gltf-model 
+          id="marker-chair"
+          class="clickable"
           src="chair.glb" 
           position="0 0 0"
-          size-adjuster="targetHeight: 0.1;">
+          size-adjuster="targetHeight: 0.79;">
         </a-gltf-model>
-        
       </a-marker>
-      
+
+      <!-- ▼▼▼ 変更点3：床に配置するための「カーソル」を準備（最初は見えない） ▼▼▼ -->
+      <!-- この半透明のリングが、床の上を追従するカーソルになる -->
+      <a-entity 
+        id="placement-cursor" 
+        ar-hit-test="targetEl: #placement-cursor" 
+        position="0 0 -2" 
+        visible="false">
+        <a-ring
+            color="#007AFF"
+            radius-inner="0.10"
+            radius-outer="0.15"
+            rotation="-90 0 0">
+        </a-ring>
+      </a-entity>
+
       <a-entity camera></a-entity>
-      
     </a-scene>
+
+    <!-- ▼▼▼ 変更点4：全体の動きをコントロールするJavaScriptを追加 ▼▼▼ -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const sceneEl = document.querySelector('a-scene');
+        const markerChair = document.querySelector('#marker-chair');
+        const placementCursor = document.querySelector('#placement-cursor');
+
+        // アプリの状態を管理する変数（最初は'marker'モード）
+        let placementMode = 'marker'; 
+
+        // マーカーの上のイスがタップされた時の処理
+        markerChair.addEventListener('click', () => {
+          if (placementMode === 'marker') {
+            console.log('配置モードに切り替え！');
+            
+            // 配置モードに切り替え
+            placementMode = 'placing';
+
+            // マーカーのイスを非表示にする
+            markerChair.setAttribute('visible', 'false');
+            
+            // 床認識(ar-hit-test)を有効にし、カーソルを表示する
+            sceneEl.setAttribute('ar-hit-test', 'enabled', true);
+            placementCursor.setAttribute('visible', 'true');
+          }
+        });
+
+        // 床がタップされた時の処理
+        sceneEl.addEventListener('click', (event) => {
+          // 配置モード中で、かつタップされたのが床カーソルだった場合
+          if (placementMode === 'placing' && event.target === placementCursor) {
+            console.log('床にイスを配置！');
+
+            // --- 新しいイスを、カーソルの場所に作る ---
+            const newChair = document.createElement('a-gltf-model');
+            newChair.setAttribute('src', 'chair.glb');
+            
+            // カーソルの位置を取得して、新しいイスに設定
+            const position = placementCursor.getAttribute('position');
+            newChair.setAttribute('position', position);
+            
+            // サイズ調整コンポーネントも取り付ける
+            newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
+            
+            // 作ったイスをシーンに追加
+            sceneEl.appendChild(newChair);
+
+            // --- モードを元に戻す ---
+            placementMode = 'marker'; // モードをリセット
+            sceneEl.setAttribute('ar-hit-test', 'enabled', false); // 床認識をオフに
+            placementCursor.setAttribute('visible', 'false'); // カーソルを非表示に
+            markerChair.setAttribute('visible', 'true'); // マーカーのイスを再表示
+          }
+        });
+      });
+    </script>
   </body>
 </html>
+```
+
+### どこを変えたか（超重要！）
+
+1.  **新しいライブラリを追加**
+    * `<head>`の中に`aframe-extras.min.js`を追加した。これが「床を認識する」ための魔法のライブラリだ。
+
+2.  **床認識（`ar-hit-test`）の設定を追加**
+    * `<a-scene>`に`ar-hit-test="enabled: false"`を追加した。最初は床認識をオフにしておいて、JavaScriptでオンにする。
+
+3.  **床に置ける場所を示す「カーソル」を用意**
+    * 半透明の青いリング（`<a-ring>`）を、`placement-cursor`として用意した。最初は見えないようにしてある。
+
+4.  **全体の動きをコントロールするJavaScriptを追加**
+    * `placementMode`っていう変数で、今の状態が「マーカーモード」なのか「配置モード」なのかを管理する。
+    * **マーカーのイスをタップしたら:**
+        * 配置モードに切り替え！
+        * マーカーのイスを隠して、床認識をONにして、床カーソルを表示する。
+    * **床カーソルをタップしたら:**
+        * その場所に、**新しいイス**をドン！と作る。
+        * モードをマーカーモードに戻して、また次の家具を置けるように準備する。
+
+### どうなるはずか？
+
+1.  今まで通り、Hiroマーカーを写すとイスが表示される。
+2.  その**イスをタップ**する。
+3.  すると、マーカーのイスが消えて、代わりに**床に青いリング（カーソル）**が表示されるようになる。スマホを動かすと、カーソルが床の上をスルスル動くはず。
+4.  好きな場所にカーソルを合わせて、**青いリングをタップ**する。
+5.  その場所に、新しいイスがドン！と置かれる。同時に、マーカーの上のイスが復活する。
+
+一気に複雑になったけど、これができればもう立派なARアプリだ！
+GitHubを更新して、試してみて
