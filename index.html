@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html>
-  <!-- A-FrameとAR.jsのライブラリを読み込む -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <head>
+    <meta charset="utf-8">
+    <title>AR.jsマーカーテスト</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- A-FrameとAR.jsのライブラリを読み込む (ページの描画が始まる前に読み込む) -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  </head>
 
   <body style="margin : 0px; overflow: hidden;">
-    <!-- a-sceneがAR空間全体になる -->
-    <!-- embedded: Webページに埋め込む形式, arjs: AR.jsの設定 -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <!-- 
+      a-sceneがAR空間全体になる 
+      vr-mode-ui: スマホで見た時に出るVRゴーグルのアイコンを消す設定
+    -->
+    <a-scene embedded arjs="sourceType: webcam; vr-mode-ui: enabled: false; debugUIEnabled: false;">
 
       <!-- 
         マーカーの設定
@@ -17,7 +25,6 @@
       <a-marker id="my-marker" type="pattern" url="https://raw.githack.com/AR-js-org/AR.js/master/data/patt.hiro">
         
         <!-- マーカーを認識したら、この中身が表示される -->
-        <!-- ここではとりあえず、赤い箱を0.5mの高さに表示 -->
         <a-box id="test-box" position="0 0.5 0" material="color: red;"></a-box>
         
       </a-marker>
@@ -27,8 +34,8 @@
     </a-scene>
 
     <script>
-      // JavaScriptでマーカーを検出した時の処理
-      window.onload = () => {
+      // HTMLの要素が全部読み込まれてからJavaScriptを実行するための記述
+      document.addEventListener('DOMContentLoaded', () => {
         const marker = document.querySelector("#my-marker");
 
         // マーカーが見つかった時
@@ -46,7 +53,7 @@
           // 見失ったら箱を赤色に戻す
           testBox.setAttribute('material', 'color', 'red');
         });
-      };
+      });
     </script>
   </body>
 </html>
