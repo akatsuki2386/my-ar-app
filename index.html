@@ -5,76 +5,121 @@
     <title>AR家具配置アプリ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <!-- ライブラリは3つとも必要 -->
+    <!-- ▼▼▼ 変更点1：ケンカの原因だった aframe-extras を削除！ ▼▼▼ -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
-
+    
     <style>
       body { margin: 0 !important; overflow: hidden !important; }
       a-scene { height: 100vh; width: 100vw; }
+      .clickable { cursor: pointer; }
     </style>
 
-    <!-- size-adjusterは今回使わないので、一旦コメントアウト
     <script>
-      AFRAME.registerComponent('size-adjuster', { ... });
+      // size-adjusterはそのまま使う
+      AFRAME.registerComponent('size-adjuster', {
+        schema: { targetHeight: {type: 'number', default: 1} },
+        init: function () {
+          this.scaled = false;
+        },
+        tick: function () {
+          if (this.el.object3DMap.mesh && !this.scaled) {
+            const targetHeight = this.data.targetHeight;
+            const mesh = this.el.getObject3D('mesh');
+            const box = new THREE.Box3().setFromObject(mesh);
+            const size = box.getSize(new THREE.Vector3());
+            if (size.y > 0) {
+              const scale = targetHeight / size.y;
+              this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
+              this.scaled = true;
+            }
+          }
+        }
+      });
     </script>
-    -->
   </head>
 
   <body>
-    <!-- ▼▼▼ 変更点1：arjsコンポーネントを削除し、ar-hit-testを最初から有効に！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点2：AR.jsを主役に！ar-hit-testを削除し、arjsとraycasterを復活 ▼▼▼ -->
     <a-scene 
-      id="ar-scene"
-      ar-hit-test="enabled: true"
-      renderer="logarithmicDepthBuffer: true;">
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      renderer="logarithmicDepthBuffer: true;"
+      cursor="rayOrigin: mouse; fuse: false;"
+      raycaster="objects: .clickable">
 
-      <!-- ▼▼▼ 変更点2：マーカーを一旦コメントアウト（無効化） ▼▼▼ -->
-      <!-- 
+      <!-- マーカーのイス。最初はこれだけが見える -->
       <a-marker preset="hiro">
-        ...
+        <a-gltf-model 
+          id="marker-chair"
+          class="clickable"
+          src="chair.glb" 
+          position="0 0 0"
+          size-adjuster="targetHeight: 0.79">
+        </a-gltf-model>
       </a-marker>
-      -->
+      
+      <!-- ▼▼▼ 変更点3：カメラに「持ち運び用」のイスを準備（最初は見えない）▼▼▼ -->
+      <a-camera>
+        <a-gltf-model
+          id="camera-chair"
+          src="chair.glb"
+          visible="false"
+          position="0 -0.5 -1.5" 
+          size-adjuster="targetHeight: 0.79">
+        </a-gltf-model>
+      </a-camera>
 
-      <!-- ▼▼▼ 変更点3：床カーソルを最初から表示させる！ ▼▼▼ -->
-      <a-entity 
-        id="placement-cursor" 
-        ar-hit-test="targetEl: #placement-cursor" 
-        position="0 0 -2" 
-        visible="true">
-        <a-ring color="#007AFF" radius-inner="0.10" radius-outer="0.15" rotation="-90 0 0"></a-ring>
-      </a-entity>
-
-      <a-camera></a-camera>
     </a-scene>
 
-    <!-- ▼▼▼ 変更点4：JavaScriptを一旦すべて削除！ ▼▼▼ -->
-    <!--
+    <!-- ▼▼▼ 変更点4：新しいロジックのJavaScript！ ▼▼▼ -->
     <script>
-      document.addEventListener('DOMContentLoaded', () => { ... });
+      document.addEventListener('DOMContentLoaded', () => {
+        const markerChair = document.querySelector('#marker-chair');
+        const cameraChair = document.querySelector('#camera-chair');
+
+        // マーカーのイスがタップされた時の処理
+        markerChair.addEventListener('click', () => {
+          console.log('イスをマーカーから解放！');
+
+          // マーカーのイスを隠す
+          markerChair.setAttribute('visible', 'false');
+          // カメラの前のイスを表示する
+          cameraChair.setAttribute('visible', 'true');
+          
+          // 3秒後に元の状態に戻る（テスト用）
+          setTimeout(() => {
+            markerChair.setAttribute('visible', 'true');
+            cameraChair.setAttribute('visible', 'false');
+            console.log('リセットしました');
+          }, 3000);
+        });
+      });
     </script>
-    -->
   </body>
 </html>
 ```
 
 ### どこを変えたか
 
-1.  **マーカー機能を全停止！**
-    * `<a-scene>`から`arjs`っていう設定を削除。
-    * `<a-marker>`と、マーカーの上のイスをまるごとコメントアウトした。
+1.  **ケンカの原因だった`aframe-extras`を削除！**
+    * これで、床の魔法はいなくなり、マーカーの魔法(AR.js)だけが動くようになる。
 
-2.  **床認識機能を最初からONに！**
-    * `<a-scene>`の`ar-hit-test`を`enabled: true`にして、ページを開いた瞬間から床を探し始めるようにした。
-    * 床カーソルも`visible="true"`にして、最初から見えるようにした。
+2.  **カメラに「持ち運び用のイス」を準備**
+    * `<a-camera>`の中に、もう一個イスを準備した。これは君が持ち運ぶためのイスで、最初は見えないようにしてある。
 
-3.  **JavaScriptを全停止！**
-    * タップの処理とか、複雑になる原因のJavaScriptを一旦全部削除した。
+3.  **新しいJavaScriptのロジック**
+    * **マーカーのイスをタップしたら:**
+        * マーカーのイスを隠す。
+        * 代わりに、カメラの前に持ち運び用のイスを表示させる！
+    * （テストのために、3秒経ったら自動で元に戻るようにしてある）
 
-### これでどうなるか確認してほしい！
+### これでどうなるはずか？
 
-このコードでGitHubを更新して、ページを開いてみてくれ！
+1.  今まで通り、マーカーを写すとイスが表示される。
+2.  その**イスをタップ**する。
+3.  すると、マーカーのイスが消えて、**画面の少し下の方に、新しいイスが表示される**はずだ！
+4.  そのイスはカメラにくっついてるから、**スマホを動かすと一緒に動く**。
+5.  3秒経つと、また元のマーカーのイスが表示される状態に戻る。
 
-**もし、カメラ映像の上に青いリングが表示されて、床の上をスルスルついてきたら**、床認識はちゃんと動いてるってことになる。そうなれば、あとはマーカーとの組み合わせ方を工夫すればいいだけだ！
-
-原因究明のための超大事な一歩だ。これで犯人が見えるはず！頼
+これができれば、ついに「マーカーからの解放」が成功したことになる！
+ここまで来たらもうゴールは目前だ！試してみて
