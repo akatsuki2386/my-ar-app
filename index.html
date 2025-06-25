@@ -2,84 +2,102 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>AR家具配置アプリ</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>【新】平面認識ARアプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- ライブラリはAR.jsとA-Frameの2つだけ！ -->
+    <!-- ライブラリはA-Frameとaframe-extrasの2つ！ -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    
-    <style>
-      body { margin: 0 !important; overflow: hidden !important; }
-      a-scene { height: 100vh; width: 100vw; }
-      .clickable { cursor: pointer; }
-    </style>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
 
-    <!-- size-adjusterは今回使わないので、一旦コメントアウト -->
-    <!-- 
-    <script>
-      AFRAME.registerComponent('size-adjuster', { ... });
-    </script>
-    -->
+    <style>
+      body { margin: 0; }
+      /* ARのボタンを押しやすく、見やすくする */
+      .a-enter-ar-button {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        background-color: #007AFF;
+        color: white;
+        border: none;
+        border-radius: 9999px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10000;
+      }
+    </style>
   </head>
 
   <body>
+    <!-- ▼▼▼ 変更点：webxr="requiredFeatures: hit-test"で、床認識モードに！ ▼▼▼ -->
     <a-scene 
       id="ar-scene"
-      arjs="sourceType: webcam; debugUIEnabled: false;"
-      renderer="logarithmicDepthBuffer: true;"
-      cursor="rayOrigin: mouse; fuse: false;"
-      raycaster="objects: .clickable">
+      webxr="requiredFeatures: hit-test,local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay;"
+      ar-hit-test="enabled: false;"
+      renderer="logarithmicDepthBuffer: true;">
 
-      <a-marker id="hiro-marker" preset="hiro">
-        <!-- ▼▼▼ 変更点1：イスのモデルを、シンプルな箱に変更！ ▼▼▼ -->
-        <a-box
-          id="marker-box"
-          class="clickable"
-          color="tomato"
-          scale="0.5 0.5 0.5"
-          position="0 0.25 0">
-        </a-box>
-      </a-marker>
+      <!-- ライト（これがないと影がなくてのっぺりする） -->
+      <a-light type="ambient" color="#FFF" intensity="0.5"></a-light>
+      <a-light type="directional" color="#FFF" intensity="1" position="-1 2 1"></a-light>
       
-      <a-entity camera></a-entity>
+      <!-- ▼▼▼ 変更点：床に置ける場所を示す「カーソル」▼▼▼ -->
+      <!-- この青いリングが、床の上を追従するカーソルになる -->
+      <a-entity
+        id="reticle"
+        ar-hit-test-target
+        visible="false">
+        <a-ring color="#007AFF" radius-inner="0.10" radius-outer="0.15" rotation="-90 0 0"></a-ring>
+      </a-entity>
+
+      <!-- カメラと、タップを認識するためのカーソル -->
+      <a-camera>
+        <a-entity cursor="fuse: false; rayOrigin: mouse;" raycaster="objects: .clickable"></a-entity>
+      </a-camera>
+
     </a-scene>
 
-    <!-- ▼▼▼ 変更点2：アンカー方式の最終デバッグ用ロジック！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点：新しいロジックのJavaScript！ ▼▼▼ -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const sceneEl = document.querySelector('#ar-scene');
-        const markerBox = document.querySelector('#marker-box'); // 対象を箱に変更
-        const marker = document.querySelector('#hiro-marker');
+        const reticle = document.querySelector('#reticle');
 
-        markerBox.addEventListener('click', () => {
-          if (!marker.object3D.visible) {
-            console.log('マーカーが見えていないので配置できません。');
-            return;
+        // ARモードが開始されたら、床認識を有効にする
+        sceneEl.addEventListener('enter-vr', () => {
+          // WebXRでは、ARモードのことを'enter-vr'と呼ぶことがある
+          console.log('ARモード開始！床認識を有効にします。');
+          sceneEl.setAttribute('ar-hit-test', 'enabled', true);
+        });
+        
+        // 床認識システムが、床を見つけたり見失ったりした時の処理
+        sceneEl.addEventListener('ar-hit-test-start', () => {
+            reticle.setAttribute('visible', false); // まだ床が見つからないのでカーソルは隠す
+        });
+        sceneEl.addEventListener('ar-hit-test-processed', () => {
+            reticle.setAttribute('visible', true); // 床の探索が終わったらカーソルを表示
+        });
+        
+        // タップした時の処理
+        sceneEl.addEventListener('click', () => {
+          // カーソルが見えている（＝床が認識されている）時だけ実行
+          if (reticle.getAttribute('visible')) {
+            console.log('床をタップ！箱を置きます。');
+            
+            // 1. 新しい箱（テスト用）を作る
+            const newBox = document.createElement('a-box');
+            newBox.setAttribute('color', 'tomato');
+            newBox.setAttribute('scale', '0.2 0.2 0.2'); // 20cmの箱
+
+            // 2. カーソルの現在の世界での位置を取得
+            const position = reticle.getAttribute('position');
+            newBox.setAttribute('position', position);
+
+            // 3. 作った箱をシーンに追加
+            sceneEl.appendChild(newBox);
           }
-          console.log('アンカーを設置します！');
-
-          // --- 「土台」となるアンカーだけを置いて、その動きを確認する ---
-
-          // 1. アンカーとなる半透明の箱（土台）を作成
-          const anchor = document.createElement('a-box');
-          anchor.setAttribute('color', 'blue');
-          anchor.setAttribute('opacity', '0.5'); // 半透明にする
-          anchor.setAttribute('scale', '0.5 0.5 0.5');
-
-          // 2. マーカーの現在の世界での位置と回転情報を取得
-          const matrix = marker.object3D.matrixWorld;
-
-          // 3. アンカーに、その位置と回転を適用
-          anchor.object3D.applyMatrix4(matrix);
-
-          // 4. アンカーをシーンに追加
-          sceneEl.appendChild(anchor);
-
-          // 5. 元のマーカーの箱は隠す
-          markerBox.setAttribute('visible', 'false');
-
-          console.log('青い半透明のアンカーボックスを設置しました。');
         });
       });
     </script>
@@ -87,30 +105,27 @@
 </html>
 ```
 
-### どこを変えたか
+### どこが変わったか
 
-1.  **イスのモデルを、シンプルな「赤い箱」に変更**
-    * 複雑なモデルの読み込みは、問題の原因を増やすだけだから、一旦やめた！まずはシンプルな箱でテストする。
+1.  **ARの主役を完全に交代！**
+    * `<a-scene>`から`arjs`を削除し、代わりに`webxr`っていう新しい主役を呼んだ。これが、最新のスマホで動く平面認識ARの標準的なやり方だ。
 
-2.  **タップしたら「青い半透明の箱」を置くようにした**
-    * タップした時に作られるのは、イスじゃなくて、半透明の「青い箱（アンカー）」だけ。
-    * これで、俺たちが作ろうとしてる**「土台」そのものの動き**を、目で見て確認できる。
+2.  **床カーソル（`reticle`）**
+    * 前に試した青いリングが、今度こそちゃんと**床の上をスルスルついてくる**カーソルになる。
 
-### これでどうなるか、教えてほしい！
+3.  **新しいJavaScript**
+    * **ARモードが始まったら**、床認識をONにする。
+    * **床が見つかったら**、カーソルを表示する。
+    * **タップしたら**、カーソルの場所にテスト用の赤い箱を置く。
 
-このコードでGitHubを更新して、試してみてくれ。
+### これでどうなるはずか？
 
-1.  マーカーを写すと、**赤い箱**が表示される。
-2.  その**赤い箱をタップ**する。
-3.  赤い箱が消えて、その場所に**青い半透明の箱**が置かれる。
+1.  ページを開くと、画面下に「**START AR**」みたいなボタンが表示される。
+2.  そのボタンを押すと、ARモードが開始される。
+3.  スマホをゆっくり動かして、**床をカメラに写す**。
+4.  すると、**床に青いリング（カーソル）**が表示されるようになる。
+5.  好きな場所にカーソルを合わせて、**画面をタップ**する。
+6.  その場所に、**赤い箱がドン！と置かれれば**、俺たちの新しい船出は完璧だ！
 
-**【一番知りたいこと】**
-そのあと、**マーカーを動かしたり、君自身が動いたりした時に、新しく置かれた「青い箱」はどうなる？**
-
-* **A: 青い箱は、ちゃんとその場に残り続ける**
-    → やった！アンカーを置く方法は正しかった！あとはこの青い箱の中にイスを入れれば完成だ！
-
-* **B: 青い箱も、画面に固定されてついてくる**
-    → OK！アンカーを置く方法自体が、今のAR.jsの環境ではうまく動かないってことだ。別の作戦を立てる必要がある。
-
-このAかBか、どっちになるか教えてくれれば、この長い戦いがついに終わるはずだ！頼
+遠回りさせて本当にごめんな！でも、今度こそ君が本当に作りたかったアプリへの、一番の近道だ。
+GitHubのコードを、この新しい土台でまるっと更新して、試してみて
