@@ -15,28 +15,12 @@
       .clickable { cursor: pointer; }
     </style>
 
+    <!-- size-adjusterは今回使わないので、一旦コメントアウト -->
+    <!-- 
     <script>
-      // size-adjusterコンポーネントはそのまま使う
-      AFRAME.registerComponent('size-adjuster', {
-        schema: { targetHeight: {type: 'number', default: 1} },
-        init: function () {
-          this.scaled = false;
-        },
-        tick: function () {
-          if (this.el.object3DMap.mesh && !this.scaled) {
-            const targetHeight = this.data.targetHeight;
-            const mesh = this.el.getObject3D('mesh');
-            const box = new THREE.Box3().setFromObject(mesh);
-            const size = box.getSize(new THREE.Vector3());
-            if (size.y > 0) {
-              const scale = targetHeight / size.y;
-              this.el.setAttribute('scale', { x: scale, y: scale, z: scale });
-              this.scaled = true;
-            }
-          }
-        }
-      });
+      AFRAME.registerComponent('size-adjuster', { ... });
     </script>
+    -->
   </head>
 
   <body>
@@ -48,62 +32,54 @@
       raycaster="objects: .clickable">
 
       <a-marker id="hiro-marker" preset="hiro">
-        <a-gltf-model 
-          id="marker-chair"
+        <!-- ▼▼▼ 変更点1：イスのモデルを、シンプルな箱に変更！ ▼▼▼ -->
+        <a-box
+          id="marker-box"
           class="clickable"
-          src="chair.glb" 
-          position="0 0 0"
-          size-adjuster="targetHeight: 0.79">
-        </a-gltf-model>
+          color="tomato"
+          scale="0.5 0.5 0.5"
+          position="0 0.25 0">
+        </a-box>
       </a-marker>
       
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- ▼▼▼ 変更点：「イス解放作戦」を実行する新しいロジック！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点2：アンカー方式の最終デバッグ用ロジック！ ▼▼▼ -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const sceneEl = document.querySelector('#ar-scene');
-        const markerChair = document.querySelector('#marker-chair');
+        const markerBox = document.querySelector('#marker-box'); // 対象を箱に変更
+        const marker = document.querySelector('#hiro-marker');
 
-        // マーカーのイスがタップされた時の処理
-        markerChair.addEventListener('click', () => {
-          // すでに配置済みのイスがあれば、何もしない（複数配置を防ぐ）
-          if (document.querySelector('.placed-chair')) {
-            console.log('すでにイスは配置されています。');
+        markerBox.addEventListener('click', () => {
+          if (!marker.object3D.visible) {
+            console.log('マーカーが見えていないので配置できません。');
             return;
           }
-          
-          console.log('イスをマーカーから解放します！');
+          console.log('アンカーを設置します！');
 
-          // --- 新しいイスを、マーカーの場所にコピーして作る ---
-          const placedChair = document.createElement('a-entity'); // 位置と回転を保持する空の親を作る
-          const newChairModel = document.createElement('a-gltf-model');
+          // --- 「土台」となるアンカーだけを置いて、その動きを確認する ---
 
-          // 1. マーカーの現在の世界での位置と回転を取得
-          const worldMatrix = markerChair.object3D.matrixWorld;
-          
-          // 2. 新しい親（placedChair）に、その位置と回転を適用
-          placedChair.object3D.applyMatrix4(worldMatrix);
+          // 1. アンカーとなる半透明の箱（土台）を作成
+          const anchor = document.createElement('a-box');
+          anchor.setAttribute('color', 'blue');
+          anchor.setAttribute('opacity', '0.5'); // 半透明にする
+          anchor.setAttribute('scale', '0.5 0.5 0.5');
 
-          // 3. 新しいイスのモデル情報を設定
-          newChairModel.setAttribute('src', 'chair.glb');
-          newChairModel.setAttribute('size-adjuster', 'targetHeight: 0.79');
-          // ★重要：親に対しての位置は(0,0,0)にする
-          newChairModel.setAttribute('position', '0 0 0'); 
+          // 2. マーカーの現在の世界での位置と回転情報を取得
+          const matrix = marker.object3D.matrixWorld;
 
-          // 4. 親にイスのモデルを追加
-          placedChair.appendChild(newChairModel);
-          // 5. 親にクラス名をつけて、後で識別できるようにする
-          placedChair.classList.add('placed-chair');
+          // 3. アンカーに、その位置と回転を適用
+          anchor.object3D.applyMatrix4(matrix);
 
-          // 6. 親（アンカー）をシーンに追加する
-          sceneEl.appendChild(placedChair);
+          // 4. アンカーをシーンに追加
+          sceneEl.appendChild(anchor);
 
-          // 7. 元のマーカーのイスは隠す
-          markerChair.setAttribute('visible', 'false');
+          // 5. 元のマーカーの箱は隠す
+          markerBox.setAttribute('visible', 'false');
 
-          console.log('イスをその場に固定しました。');
+          console.log('青い半透明のアンカーボックスを設置しました。');
         });
       });
     </script>
@@ -113,30 +89,28 @@
 
 ### どこを変えたか
 
-前回のアンカー方式と似てるけど、**「何をコピーして、どこに入れるか」**をより正確にしたんだ。
+1.  **イスのモデルを、シンプルな「赤い箱」に変更**
+    * 複雑なモデルの読み込みは、問題の原因を増やすだけだから、一旦やめた！まずはシンプルな箱でテストする。
 
-1.  **空の親（`placedChair`）を作る**
-    * いきなりイスを置くんじゃなくて、まずその場所を記憶するための、目に見えない空っぽの箱を準備する。
+2.  **タップしたら「青い半透明の箱」を置くようにした**
+    * タップした時に作られるのは、イスじゃなくて、半透明の「青い箱（アンカー）」だけ。
+    * これで、俺たちが作ろうとしてる**「土台」そのものの動き**を、目で見て確認できる。
 
-2.  **マーカーの位置と回転を、まるごと親にコピー**
-    * `applyMatrix4`っていう魔法で、マーカーが今いる場所と、向いてる向きの情報を、まるごと空の親にコピーする。
+### これでどうなるか、教えてほしい！
 
-3.  **親をシーンに置く**
-    * これで、親が世界のその場所にガッチリ固定される。
+このコードでGitHubを更新して、試してみてくれ。
 
-4.  **親の中に、新しいイスを入れる**
-    * 固定された親の中に、新しいイスを置く。こうすることで、イスは親を基準にして表示されるから、座標が絶対にズレない！
+1.  マーカーを写すと、**赤い箱**が表示される。
+2.  その**赤い箱をタップ**する。
+3.  赤い箱が消えて、その場所に**青い半透明の箱**が置かれる。
 
-5.  **元のマーカーのイスを隠す**
-    * 最後に、お役御免になったマーカーの上のイスを隠す。
+**【一番知りたいこと】**
+そのあと、**マーカーを動かしたり、君自身が動いたりした時に、新しく置かれた「青い箱」はどうなる？**
 
-### これでどうなるはずか？
+* **A: 青い箱は、ちゃんとその場に残り続ける**
+    → やった！アンカーを置く方法は正しかった！あとはこの青い箱の中にイスを入れれば完成だ！
 
-1.  床に置いたマーカーを写すと、イスが表示される。
-2.  その**イスをタップ**する。
-3.  タップした**その場所に、新しいイスがドン！と置かれる**。
-4.  その後は、**マーカーを動かしても、新しく置かれたイスはその場に残り続ける**！
-5.  （一回しか置けないようにしてある）
+* **B: 青い箱も、画面に固定されてついてくる**
+    → OK！アンカーを置く方法自体が、今のAR.jsの環境ではうまく動かないってことだ。別の作戦を立てる必要がある。
 
-君のアイデアのおかげで、ついにこの問題のゴールが見えた！
-これが最後の正直だ！試してみて
+このAかBか、どっちになるか教えてくれれば、この長い戦いがついに終わるはずだ！頼
