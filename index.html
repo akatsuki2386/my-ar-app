@@ -47,7 +47,6 @@
       cursor="rayOrigin: mouse; fuse: false;"
       raycaster="objects: .clickable">
 
-      <!-- ▼▼▼ 変更点1：マーカー本体にもIDを追加 ▼▼▼ -->
       <a-marker id="hiro-marker" preset="hiro">
         <a-gltf-model 
           id="marker-chair"
@@ -61,52 +60,50 @@
       <a-entity camera></a-entity>
     </a-scene>
 
-    <!-- ▼▼▼ 変更点2：アンカー方式を使った新しいロジック！ ▼▼▼ -->
+    <!-- ▼▼▼ 変更点：「イス解放作戦」を実行する新しいロジック！ ▼▼▼ -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const sceneEl = document.querySelector('#ar-scene');
         const markerChair = document.querySelector('#marker-chair');
-        const marker = document.querySelector('#hiro-marker'); // マーカー本体を取得
 
         // マーカーのイスがタップされた時の処理
         markerChair.addEventListener('click', () => {
-          // マーカーが現在認識されているか（見えているか）を確認
-          if (!marker.object3D.visible) {
-              console.log('マーカーが見えていないので配置できません。');
-              return;
+          // すでに配置済みのイスがあれば、何もしない（複数配置を防ぐ）
+          if (document.querySelector('.placed-chair')) {
+            console.log('すでにイスは配置されています。');
+            return;
           }
-
-          console.log('イスをアンカーでその場に固定します！');
-
-          // --- 新しいイスを、マーカーの場所に「アンカー」を使って固定する ---
-
-          // 1. アンカーとなる空のエンティティを作成
-          const anchor = document.createElement('a-entity');
-
-          // 2. マーカーの現在の世界座標系での「行列(Matrix)」を取得
-          // これが、その瞬間の位置・回転・スケールの情報のすべて
-          marker.object3D.updateWorldMatrix(true, false);
-          const markerMatrix = marker.object3D.matrixWorld;
-
-          // 3. アンカーに、取得した行列を適用する
-          // これでアンカーがマーカーと全く同じ場所に固定される
-          anchor.object3D.applyMatrix4(markerMatrix);
           
-          // 4. アンカーをシーンに追加
-          sceneEl.appendChild(anchor);
+          console.log('イスをマーカーから解放します！');
 
-          // 5. 新しいイスを作成
-          const newChair = document.createElement('a-gltf-model');
-          newChair.setAttribute('src', 'chair.glb');
-          
-          // 6. イスのサイズを調整するコンポーネントを取り付け
-          newChair.setAttribute('size-adjuster', 'targetHeight: 0.79');
-          
-          // 7. 新しいイスを「アンカーの子」として追加
-          // これで、イスはアンカーを基準にした位置(0, 0, 0)に置かれる
-          anchor.appendChild(newChair);
+          // --- 新しいイスを、マーカーの場所にコピーして作る ---
+          const placedChair = document.createElement('a-entity'); // 位置と回転を保持する空の親を作る
+          const newChairModel = document.createElement('a-gltf-model');
 
-          console.log('新しいイスをアンカーに固定しました。');
+          // 1. マーカーの現在の世界での位置と回転を取得
+          const worldMatrix = markerChair.object3D.matrixWorld;
+          
+          // 2. 新しい親（placedChair）に、その位置と回転を適用
+          placedChair.object3D.applyMatrix4(worldMatrix);
+
+          // 3. 新しいイスのモデル情報を設定
+          newChairModel.setAttribute('src', 'chair.glb');
+          newChairModel.setAttribute('size-adjuster', 'targetHeight: 0.79');
+          // ★重要：親に対しての位置は(0,0,0)にする
+          newChairModel.setAttribute('position', '0 0 0'); 
+
+          // 4. 親にイスのモデルを追加
+          placedChair.appendChild(newChairModel);
+          // 5. 親にクラス名をつけて、後で識別できるようにする
+          placedChair.classList.add('placed-chair');
+
+          // 6. 親（アンカー）をシーンに追加する
+          sceneEl.appendChild(placedChair);
+
+          // 7. 元のマーカーのイスは隠す
+          markerChair.setAttribute('visible', 'false');
+
+          console.log('イスをその場に固定しました。');
         });
       });
     </script>
@@ -116,24 +113,30 @@
 
 ### どこを変えたか
 
-1.  **マーカー本体にIDを追加**
-    * イスだけじゃなくて、マーカー自体もJavaScriptから見つけられるように`id="hiro-marker"`を追加した。
+前回のアンカー方式と似てるけど、**「何をコピーして、どこに入れるか」**をより正確にしたんだ。
 
-2.  **アンカー方式のロジックに全面変更！**
-    * **タップされたら:**
-    * マーカーの**現在の位置や向きの情報**を、`matrixWorld`っていう魔法の箱にまるごとコピーする。
-    * 空っぽの入れ物（`anchor`）をその場に作る。
-    * その入れ物に、さっきコピーした魔法の箱の中身を全部適用する。これで、**入れ物がその場にガッチリ固定される**。
-    * 新しいイスを作って、その**固定された入れ物の中に入れる**。
+1.  **空の親（`placedChair`）を作る**
+    * いきなりイスを置くんじゃなくて、まずその場所を記憶するための、目に見えない空っぽの箱を準備する。
+
+2.  **マーカーの位置と回転を、まるごと親にコピー**
+    * `applyMatrix4`っていう魔法で、マーカーが今いる場所と、向いてる向きの情報を、まるごと空の親にコピーする。
+
+3.  **親をシーンに置く**
+    * これで、親が世界のその場所にガッチリ固定される。
+
+4.  **親の中に、新しいイスを入れる**
+    * 固定された親の中に、新しいイスを置く。こうすることで、イスは親を基準にして表示されるから、座標が絶対にズレない！
+
+5.  **元のマーカーのイスを隠す**
+    * 最後に、お役御免になったマーカーの上のイスを隠す。
 
 ### これでどうなるはずか？
 
-前と同じだ！
-
 1.  床に置いたマーカーを写すと、イスが表示される。
 2.  その**イスをタップ**する。
-3.  タップした**その場所に、新しいイスがドン！とコピーされて置かれる**。
-4.  その後は、**マーカーを動かしても、新しく置かれたイスはその場に残り続ける**。
+3.  タップした**その場所に、新しいイスがドン！と置かれる**。
+4.  その後は、**マーカーを動かしても、新しく置かれたイスはその場に残り続ける**！
+5.  （一回しか置けないようにしてある）
 
-今度こそ、本当にその場に固定されるはずだ！
-この問題との戦いに、終止符を打とうぜ！試してみて
+君のアイデアのおかげで、ついにこの問題のゴールが見えた！
+これが最後の正直だ！試してみて
